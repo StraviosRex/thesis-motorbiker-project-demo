@@ -20,8 +20,8 @@ export function Header() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 10.364a9 9 0 11-12.728 0M15 15l-4.243-4.243M14 8h-4a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2z" />
           </svg>
         </div>
-        <Link href="/">
-          <a className="font-montserrat font-bold text-xl md:text-2xl">MotoRoute Europe</a>
+        <Link href="/" className="font-montserrat font-bold text-xl md:text-2xl">
+          MotoRoute Europe
         </Link>
       </div>
       <div className="flex items-center">
