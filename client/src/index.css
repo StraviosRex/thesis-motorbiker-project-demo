@@ -86,6 +86,12 @@
   }
 }
 
+/* Fix Leaflet tiles broken by Tailwind CSS base reset */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
 @layer utilities {
   .h-screen-minus-header {
     height: calc(100vh - 4rem);
