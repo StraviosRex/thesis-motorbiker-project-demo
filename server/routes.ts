@@ -17,6 +17,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { calculateDynamicRoute } from "./services/dynamicRoute";
 import { POIService } from "./services/poi";
+import { findFerryPrices } from "./services/ferryLookup";
 
 // Simple in-memory cache for POIs
 const poiCache = new Map<number, { pois: any[], timestamp: number }>();
@@ -213,6 +214,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching accommodations:", error);
       res.status(500).json({ message: "Failed to fetch accommodations" });
     }
+  });
+
+  // On-demand ferry price lookup
+  // Accepts start/end coordinates of an ORS-detected ferry step and returns
+  // the best-matching entry from the curated European ferry route table.
+  app.get(`${apiPrefix}/ferry-prices`, (req, res) => {
+    const startLat = parseFloat(req.query.startLat as string);
+    const startLng = parseFloat(req.query.startLng as string);
+    const endLat   = parseFloat(req.query.endLat   as string);
+    const endLng   = parseFloat(req.query.endLng   as string);
+
+    if ([startLat, startLng, endLat, endLng].some(isNaN)) {
+      return res.status(400).json({ message: "startLat, startLng, endLat and endLng are required" });
+    }
+
+    const result = findFerryPrices(startLat, startLng, endLat, endLng);
+    if (!result) {
+      return res.status(404).json({ message: "No known ferry route found near those coordinates" });
+    }
+
+    res.json(result);
   });
 
   // Route search
