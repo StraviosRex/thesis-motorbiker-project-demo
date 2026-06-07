@@ -24,9 +24,10 @@ type PriceState =
 interface FerryInfoProps {
   includeFerries: boolean;
   ferryRoutes?: FerryRoute[];
+  onPriceChecked?: (ferryId: number, priceMin: number, priceMax: number) => void;
 }
 
-export function FerryInfo({ includeFerries, ferryRoutes = [] }: FerryInfoProps) {
+export function FerryInfo({ includeFerries, ferryRoutes = [], onPriceChecked }: FerryInfoProps) {
   const hasFerryRoutes = includeFerries && ferryRoutes.length > 0;
 
   // Per-ferry price state keyed by ferry route id
@@ -54,6 +55,7 @@ export function FerryInfo({ includeFerries, ferryRoutes = [] }: FerryInfoProps) 
 
       const data: FerryPriceResult = await res.json();
       setPriceStates(prev => ({ ...prev, [ferry.id]: { status: "loaded", data } }));
+      onPriceChecked?.(ferry.id, data.priceMin, data.priceMax);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setPriceStates(prev => ({ ...prev, [ferry.id]: { status: "error", message } }));

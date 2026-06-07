@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SavedRoute, formatDistance, formatDuration } from "@/lib/utils";
@@ -22,6 +22,9 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, class
 
   const routeData = propRouteData ?? fetchedRouteData;
 
+  // Tracks verified price midpoints per ferry id, updated when user clicks "Check prices"
+  const [checkedFerryPrices, setCheckedFerryPrices] = useState<Record<number, number>>({});
+
   const distanceInKm = routeData ? Number(routeData.distance) : 0;
   const durationInMinutes = routeData ? parseInt(routeData.duration) : 0;
   const ridingDays = durationInMinutes > 0 ? Math.max(1, Math.ceil(durationInMinutes / (8 * 60))) : 1;
@@ -29,7 +32,10 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, class
   const fuelCost = Math.round(distanceInKm * 0.05 * 1.7);
   const accommodationCost = Math.max(0, ridingDays - 1) * 70;
   const foodCost = ridingDays * 30;
-  const ferryCost = Math.round((routeData?.ferryRoutes ?? []).reduce((sum, ferryRoute) => sum + Number(ferryRoute.price), 0));
+  const ferryCost = Math.round((routeData?.ferryRoutes ?? []).reduce((sum, ferryRoute) => {
+    const checked = checkedFerryPrices[ferryRoute.id];
+    return sum + (checked !== undefined ? checked : Number(ferryRoute.price));
+  }, 0));
   const totalEstimatedCost = fuelCost + accommodationCost + foodCost + ferryCost;
 
   return (
@@ -121,7 +127,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, class
                 <div className="flex justify-between"><span>Fuel</span><span>€{fuelCost}</span></div>
                 <div className="flex justify-between"><span>Accommodation</span><span>€{accommodationCost}</span></div>
                 <div className="flex justify-between"><span>Food (~€30/day)</span><span>€{foodCost}</span></div>
-                <div className="flex justify-between"><span>Ferries</span><span>€{ferryCost}</span></div>
+                <div className="flex justify-between"><span>Ferries{Object.keys(checkedFerryPrices).length > 0 ? ' (verified)' : ''}</span><span>€{ferryCost}</span></div>
                 <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between font-medium text-gray-800">
                   <span>Total</span>
                   <span>€{totalEstimatedCost}</span>
@@ -212,7 +218,13 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, class
               <Accommodation accommodations={routeData.accommodations} />
               
               {/* Ferry Options */}
-              <FerryInfo includeFerries={routeData.preferences.includeFerries} ferryRoutes={routeData.ferryRoutes} />
+              <FerryInfo
+                includeFerries={routeData.preferences.includeFerries}
+                ferryRoutes={routeData.ferryRoutes}
+                onPriceChecked={(id, min, max) =>
+                  setCheckedFerryPrices(prev => ({ ...prev, [id]: Math.round((min + max) / 2) }))
+                }
+              />
             </div>
           </>
         ) : (
