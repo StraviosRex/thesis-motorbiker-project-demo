@@ -122,11 +122,13 @@ export async function calculateDynamicRoute(
     restaurant: 'rest',
     gas_station: 'fuel',
     attraction: 'viewpoint',
+    motorcycle_repair: 'repair',
+    hotel: 'rest', // hotels already handled separately as accommodations
   };
 
   const pointsOfInterest: PointOfInterest[] = rawPois
     .filter(p => p.type in poiTypeMap)
-    .slice(0, 15)
+    .slice(0, 20)
     .map((p, idx) => ({
       id: idx,
       name: p.name,

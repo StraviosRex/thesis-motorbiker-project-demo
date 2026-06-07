@@ -42,6 +42,12 @@ export function PointsOfInterest({ points }: PointsOfInterestProps) {
             <path fillRule="evenodd" d="M5 2a1 1 0 011-1h8a1 1 0 011 1v13.586l-4-4-4 4V2zm9.707 14.293l-4-4-4 4-1.414-1.414 4-4-4-4L6.707 1.707l4 4 4-4 1.414 1.414-4 4 4 4-1.414 1.414z" clipRule="evenodd" />
           </svg>
         );
+      case 'repair':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+          </svg>
+        );
       default:
         return (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
@@ -58,6 +64,7 @@ export function PointsOfInterest({ points }: PointsOfInterestProps) {
       case 'viewpoint': return 'bg-green-100';
       case 'meeting': return 'bg-purple-100';
       case 'fuel': return 'bg-yellow-100';
+      case 'repair': return 'bg-orange-100';
       default: return 'bg-gray-100';
     }
   };

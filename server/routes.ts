@@ -93,8 +93,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[API] Collected ${allWaypoints.length} major points from route`);
 
       const poiService = new POIService();
-      // Get top 5 POIs per location (ensures every stop gets representation)
-      const pois = await poiService.getPOIsAlongRoute(allWaypoints, 10, 5);
+      // 8 per location = 2 of each priority type (gas, repair, hotel, restaurant)
+      const pois = await poiService.getPOIsAlongRoute(allWaypoints, 10, 8);
 
       // Cache the results
       poiCache.set(routeId, { pois, timestamp: Date.now() });

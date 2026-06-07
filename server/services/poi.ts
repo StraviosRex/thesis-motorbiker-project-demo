@@ -29,7 +29,7 @@ interface OverpassResponse {
 export interface POI {
   id: string;
   name: string;
-  type: 'restaurant' | 'gas_station' | 'hotel' | 'attraction' | 'hospital';
+  type: 'restaurant' | 'gas_station' | 'hotel' | 'attraction' | 'hospital' | 'motorcycle_repair';
   coordinates: Coordinates;
   details?: {
     cuisine?: string;
@@ -64,7 +64,7 @@ export class POIService {
     maxResults: number = 40
   ): Promise<POI[]> {
     const bbox = `${south},${west},${north},${east}`;
-    const query = `[out:json][timeout:15];(node["amenity"="restaurant"](${bbox});node["amenity"="fuel"](${bbox});node["tourism"="hotel"](${bbox});node["tourism"="attraction"](${bbox}););out ${maxResults};`;
+    const query = `[out:json][timeout:15];(node["amenity"="restaurant"](${bbox});node["amenity"="fuel"](${bbox});node["tourism"="hotel"](${bbox});node["tourism"="attraction"](${bbox});node["shop"="motorcycle"](${bbox});node["amenity"="car_repair"](${bbox}););out ${maxResults};`;
     try {
       const url = `${this.baseUrl}?data=${encodeURIComponent(query)}`;
       const response = await fetch(url, {
@@ -112,24 +112,37 @@ export class POIService {
     return uniquePOIs;
   }
 
+  // Fixed priority order for balanced per-checkpoint distribution.
+  // Motorcycle-relevant types come first so they are never crowded out.
+  private readonly PRIORITY_TYPES: POI['type'][] = [
+    'gas_station',
+    'motorcycle_repair',
+    'hotel',
+    'restaurant',
+  ];
+
   private getTopPOIsPerLocation(pois: POI[], maxPerLocation: number): POI[] {
-    // Group by type
+    const perType = Math.max(1, Math.floor(maxPerLocation / this.PRIORITY_TYPES.length));
+
     const byType = pois.reduce((acc, poi) => {
       if (!acc[poi.type]) acc[poi.type] = [];
       acc[poi.type].push(poi);
       return acc;
     }, {} as Record<string, POI[]>);
 
-    // Get 1-2 of each type to ensure variety
-    const types = Object.keys(byType);
-    const perType = Math.max(1, Math.floor(maxPerLocation / types.length));
-    
     const result: POI[] = [];
-    for (const type of types) {
-      const typePOIs = byType[type].slice(0, perType);
-      result.push(...typePOIs);
-      
+
+    // Take up to perType from each priority type first
+    for (const type of this.PRIORITY_TYPES) {
+      const typePOIs = byType[type] ?? [];
+      result.push(...typePOIs.slice(0, perType));
+      delete byType[type];
+    }
+
+    // Fill any remaining slots with leftover types (attraction, hospital, etc.)
+    for (const typePOIs of Object.values(byType)) {
       if (result.length >= maxPerLocation) break;
+      result.push(...(typePOIs as POI[]).slice(0, maxPerLocation - result.length));
     }
 
     return result.slice(0, maxPerLocation);
@@ -180,7 +193,7 @@ export class POIService {
     const radiusMeters = radiusKm * 1000;
 
     // Overpass QL query for various POI types - simplified to avoid 406 errors
-    const query = `[out:json];(node["amenity"="restaurant"](around:${radiusMeters},${center.lat},${center.lng});node["amenity"="fuel"](around:${radiusMeters},${center.lat},${center.lng});node["tourism"="hotel"](around:${radiusMeters},${center.lat},${center.lng}););out;`;
+    const query = `[out:json];(node["amenity"="restaurant"](around:${radiusMeters},${center.lat},${center.lng});node["amenity"="fuel"](around:${radiusMeters},${center.lat},${center.lng});node["tourism"="hotel"](around:${radiusMeters},${center.lat},${center.lng});node["shop"="motorcycle"](around:${radiusMeters},${center.lat},${center.lng});node["amenity"="car_repair"](around:${radiusMeters},${center.lat},${center.lng}););out;`;
 
     try {
       // Use GET request with data parameter
@@ -249,6 +262,7 @@ export class POIService {
     if (tags.tourism === 'hotel' || tags.tourism === 'motel') return 'hotel';
     if (tags.tourism === 'attraction') return 'attraction';
     if (tags.amenity === 'hospital') return 'hospital';
+    if (tags.shop === 'motorcycle' || tags.shop === 'motorcycle_repair' || tags.amenity === 'car_repair') return 'motorcycle_repair';
     return null;
   }
 }

@@ -34,7 +34,7 @@ export interface PointOfInterest {
   id: number;
   name: string;
   description: string;
-  type: 'rest' | 'shop' | 'viewpoint' | 'meeting' | 'fuel';
+  type: 'rest' | 'shop' | 'viewpoint' | 'meeting' | 'fuel' | 'repair';
   coordinates: Coordinates;
   rating: number;
   reviews: number;
