@@ -10,8 +10,8 @@ export default function RouteView() {
   const routeId = params?.id ? parseInt(params.id) : undefined;
   
   const { data: routeData } = useQuery<SavedRoute>({
-    queryKey: ['/api/routes', routeId],
-    enabled: !!routeId,
+    queryKey: [`/api/routes/${routeId}`],
+    enabled: routeId !== undefined,
   });
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function RouteView() {
         <meta property="og:type" content="website" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
       </Helmet>
-      <AppLayout showRoutePlanner={false} showRouteDetails={true} routeId={routeId} />
+      <AppLayout showRoutePlanner={true} showRouteDetails={true} routeId={routeId} />
     </>
   );
 }

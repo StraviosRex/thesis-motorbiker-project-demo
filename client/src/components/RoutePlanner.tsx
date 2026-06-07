@@ -33,6 +33,9 @@ export function RoutePlanner({ onCalculateRoute, onToggleSidebar, className }: R
         throw new Error("Start and destination locations are required");
       }
       
+      // Clear any previous dynamic route
+      sessionStorage.removeItem('dynamicRoute');
+      
       return await apiRequest("POST", "/api/routes/calculate", {
         startLocation,
         endLocation,
@@ -47,6 +50,23 @@ export function RoutePlanner({ onCalculateRoute, onToggleSidebar, className }: R
     onSuccess: async (res) => {
       const routeData = await res.json();
       console.log("Route calculated:", routeData);
+
+      // Store route data for dynamic routes
+      if (routeData?.id === 0) {
+        console.log('[RoutePlanner] Dynamic route calculated, dispatching event');
+        // Navigate to home to clear any existing routeId
+        setLocation('/');
+        // Trigger a custom event to notify MapArea (don't use sessionStorage)
+        setTimeout(() => {
+          const event = new CustomEvent('dynamicRouteCalculated', { detail: routeData });
+          window.dispatchEvent(event);
+          console.log('[RoutePlanner] Event dispatched:', event);
+        }, 100);
+      } else if (routeData?.id && routeData.id > 0) {
+        // Navigate to curated route
+        console.log('[RoutePlanner] Curated route found, navigating to:', routeData.id);
+        setLocation(`/routes/${routeData.id}`);
+      }
       
       // Close the sidebar on mobile
       if (onToggleSidebar && window.innerWidth < 768) {

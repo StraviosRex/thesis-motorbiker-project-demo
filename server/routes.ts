@@ -15,6 +15,12 @@ import {
 } from "@shared/schema";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { calculateDynamicRoute } from "./services/dynamicRoute";
+import { POIService } from "./services/poi";
+
+// Simple in-memory cache for POIs
+const poiCache = new Map<number, { pois: any[], timestamp: number }>();
+const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
 const calculateRouteSchema = z.object({
   startLocation: z.string().min(1, "Starting location is required"),
@@ -45,6 +51,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get POIs along a route (must be before /routes/:id to avoid conflict)
+  app.get(`${apiPrefix}/routes/:id/pois`, async (req, res) => {
+    try {
+      const routeId = parseInt(req.params.id);
+      
+      if (isNaN(routeId) || routeId <= 0) {
+        return res.status(400).json({ message: "Invalid route ID" });
+      }
+
+      // Check cache first
+      const cached = poiCache.get(routeId);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+        console.log(`[API] Returning cached POIs for route ${routeId} (${cached.pois.length} POIs)`);
+        return res.json(cached.pois);
+      }
+
+      console.log(`[API] Fetching POIs for route ${routeId}`);
+      
+      const route = await storage.getRouteById(routeId);
+      if (!route) {
+        return res.status(404).json({ message: "Route not found" });
+      }
+
+      // Collect major points: route start/end and all segment start/end points
+      const majorPoints = [
+        route.startLocation.coordinates,
+        ...route.segments.flatMap((segment: any) => [
+          segment.startLocation.coordinates,
+          segment.endLocation.coordinates
+        ]),
+        route.endLocation.coordinates
+      ];
+
+      // Remove duplicates
+      const allWaypoints = majorPoints.filter((point, index, self) =>
+        index === self.findIndex(p => p.lat === point.lat && p.lng === point.lng)
+      );
+
+      console.log(`[API] Collected ${allWaypoints.length} major points from route`);
+
+      const poiService = new POIService();
+      // Get top 5 POIs per location (ensures every stop gets representation)
+      const pois = await poiService.getPOIsAlongRoute(allWaypoints, 10, 5);
+
+      // Cache the results
+      poiCache.set(routeId, { pois, timestamp: Date.now() });
+
+      console.log(`[API] Found and cached ${pois.length} POIs for route ${routeId}`);
+      res.json(pois);
+    } catch (error) {
+      console.error("Error fetching POIs:", error);
+      res.status(500).json({ message: "Failed to fetch POIs" });
+    }
+  });
+
   // Get a single route by ID
   app.get(`${apiPrefix}/routes/:id`, async (req, res) => {
     try {
@@ -69,22 +130,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiPrefix}/routes/calculate`, async (req, res) => {
     try {
       const validatedData = calculateRouteSchema.parse(req.body);
+
+      // Step 1: Try to find a curated route in the database
+      console.log(`[API] Looking for curated route: ${validatedData.startLocation} → ${validatedData.endLocation}`);
+      let calculatedRoute = await storage.getRouteByLocations(
+        validatedData.startLocation,
+        validatedData.endLocation,
+      );
       
-      // Simulate route calculation (in a real app, this would call a routing service API)
-      // For now, just returning the first saved route as a mock
-      const routes = await storage.getSavedRoutes();
-      const calculatedRoute = routes[0];
-      
+      // Step 2: If no curated route found, try dynamic calculation
       if (!calculatedRoute) {
-        return res.status(404).json({ message: "No route found" });
-      }
-      
-      // Customize the route based on provided preferences
-      if (validatedData.preferences) {
-        calculatedRoute.preferences = {
-          ...calculatedRoute.preferences,
-          ...validatedData.preferences
-        };
+        console.log(`[API] No curated route found, attempting dynamic calculation...`);
+        
+        const dynamicRoute = await calculateDynamicRoute(
+          validatedData.startLocation,
+          validatedData.endLocation,
+          validatedData.preferences
+        );
+        
+        if (!dynamicRoute) {
+          return res.status(404).json({
+            message: `Could not calculate route from ${validatedData.startLocation} to ${validatedData.endLocation}. Please check location names or ensure OpenRouteService API key is configured.`,
+          });
+        }
+        
+        console.log(`[API] Dynamic route calculated successfully`);
+        return res.json(dynamicRoute);
+      } else {
+        console.log(`[API] Found curated route: ${calculatedRoute.name}`);
+        
+        // Customize the curated route based on provided preferences
+        if (validatedData.preferences) {
+          calculatedRoute.preferences = {
+            ...calculatedRoute.preferences,
+            ...validatedData.preferences
+          };
+        }
       }
       
       res.json(calculatedRoute);

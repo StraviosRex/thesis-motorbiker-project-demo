@@ -78,7 +78,8 @@ export interface SavedRoute {
   duration: string;
   segments: RouteSegment[];
   pointsOfInterest: PointOfInterest[];
-  accommodation: Accommodation[];
+  accommodations: Accommodation[];
+  ferryRoutes: FerryRoute[];
   dates: {
     start: string;
     end: string;
