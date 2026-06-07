@@ -1,6 +1,6 @@
-# European Rider Guide
+# European Rider Guide Portable Demo
 
-A full-stack web application for planning motorcycle trips across Europe — dynamic route calculation, curated scenic routes, POIs, ferry crossings, and accommodation suggestions on an interactive map.
+A demo version of full-stack web application for planning motorcycle trips across Europe with dynamic route calculation, curated scenic routes, POIs, ferry crossings, and accommodation suggestions on an interactive map.
 
 ---
 
