@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
 import { useMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
+import logoImg from "@/assets/logo-40.png";
 
 export function Header() {
   const isMobile = useMobile();
@@ -16,9 +17,7 @@ export function Header() {
     <header className="bg-primary text-white h-16 flex items-center justify-between px-4 shadow-md z-10">
       <div className="flex items-center">
         <div className="mr-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 10.364a9 9 0 11-12.728 0M15 15l-4.243-4.243M14 8h-4a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2z" />
-          </svg>
+          <img src={logoImg} alt="MotoRoute Europe logo" className="h-10 w-10 rounded-full" />
         </div>
         <Link href="/" className="font-montserrat font-bold text-xl md:text-2xl">
           MotoRoute Europe
