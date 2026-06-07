@@ -86,7 +86,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Superfast Ferries / ANEK Lines",
     priceMin: 80, priceMax: 240, priceUnit: "per motorcycle + rider",
     duration: "21h", schedule: "Daily (peak season)",
-    bookingUrl: "https://www.superfast.com/routes/ancona-patras",
+    bookingUrl: "https://www.superfast.com",
   },
   {
     routeName: "Bari – Patras",
@@ -95,7 +95,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Superfast Ferries",
     priceMin: 75, priceMax: 210, priceUnit: "per motorcycle + rider",
     duration: "15–16h", schedule: "Daily",
-    bookingUrl: "https://www.superfast.com/routes/bari-patras",
+    bookingUrl: "https://www.superfast.com",
   },
   {
     routeName: "Brindisi – Igoumenitsa",
@@ -104,7 +104,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Grimaldi Lines",
     priceMin: 60, priceMax: 160, priceUnit: "per motorcycle + rider",
     duration: "8–9h", schedule: "Daily",
-    bookingUrl: "https://www.grimaldi-lines.com/en/route/brindisi-igoumenitsa",
+    bookingUrl: "https://www.grimaldi-lines.com",
   },
   {
     routeName: "Venice – Patras",
@@ -113,7 +113,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Minoan Lines",
     priceMin: 90, priceMax: 260, priceUnit: "per motorcycle + rider",
     duration: "30h", schedule: "3–4 per week",
-    bookingUrl: "https://www.minoan.gr/en/routes/venice-patras",
+    bookingUrl: "https://www.minoan.gr",
   },
   {
     routeName: "Bari – Durrës",
@@ -122,7 +122,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Adria Ferries",
     priceMin: 50, priceMax: 140, priceUnit: "per motorcycle + rider",
     duration: "8–9h", schedule: "Daily",
-    bookingUrl: "https://www.adriaferries.com/en/routes/bari-durres",
+    bookingUrl: "https://www.adriaferries.com",
   },
 
   // ── Tyrrhenian / Sicily ──────────────────────────────────────────────────────
@@ -133,7 +133,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Grimaldi Lines / GNV",
     priceMin: 70, priceMax: 200, priceUnit: "per motorcycle + rider",
     duration: "20h", schedule: "Daily",
-    bookingUrl: "https://www.gnv.it/en/ferries/genova-palermo.html",
+    bookingUrl: "https://www.gnv.it/en",
   },
   {
     routeName: "Naples – Palermo",
@@ -142,7 +142,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "SNAV / GNV",
     priceMin: 55, priceMax: 150, priceUnit: "per motorcycle + rider",
     duration: "10–11h", schedule: "Daily",
-    bookingUrl: "https://www.gnv.it/en/ferries/napoli-palermo.html",
+    bookingUrl: "https://www.gnv.it/en",
   },
   {
     routeName: "Civitavecchia – Palermo",
@@ -151,7 +151,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "GNV",
     priceMin: 60, priceMax: 170, priceUnit: "per motorcycle + rider",
     duration: "13–14h", schedule: "4–7 per week",
-    bookingUrl: "https://www.gnv.it/en/ferries/civitavecchia-palermo.html",
+    bookingUrl: "https://www.gnv.it/en",
   },
 
   // ── Western Mediterranean ─────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Baleàlia Ferries",
     priceMin: 60, priceMax: 170, priceUnit: "per motorcycle + rider",
     duration: "7–8h", schedule: "Daily",
-    bookingUrl: "https://www.balearia.com/en/ferries/barcelona-palma.html",
+    bookingUrl: "https://www.balearia.com",
   },
   {
     routeName: "Marseille – Ajaccio (Corsica)",
@@ -182,7 +182,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Minoan Lines / ANEK",
     priceMin: 40, priceMax: 130, priceUnit: "per motorcycle + rider",
     duration: "8–9h", schedule: "Daily",
-    bookingUrl: "https://www.minoan.gr/en/routes/piraeus-heraklion",
+    bookingUrl: "https://www.minoan.gr",
   },
   {
     routeName: "Piraeus – Rhodes",
@@ -191,7 +191,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "Blue Star Ferries",
     priceMin: 55, priceMax: 150, priceUnit: "per motorcycle + rider",
     duration: "14–18h", schedule: "Daily",
-    bookingUrl: "https://www.bluestarferries.com/en/routes/piraeus-rhodes",
+    bookingUrl: "https://www.bluestarferries.com/en-gb",
   },
   {
     routeName: "Igoumenitsa – Corfu",
@@ -211,7 +211,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     priceMin: 45, priceMax: 120, priceUnit: "per motorcycle + rider",
     duration: "2h 45min (high-speed) / 5h (regular)",
     schedule: "3 departures/day in peak season",
-    bookingUrl: "https://www.bluestarferries.com/en/routes/piraeus-mykonos",
+    bookingUrl: "https://www.bluestarferries.com/en-gb",
   },
   {
     routeName: "Mykonos – Naxos",
@@ -220,7 +220,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "SeaJets / Blue Star Ferries",
     priceMin: 25, priceMax: 70, priceUnit: "per motorcycle + rider",
     duration: "1h 10min", schedule: "2–3 per day",
-    bookingUrl: "https://www.seajets.com/routes/mykonos-naxos",
+    bookingUrl: "https://www.seajets.com",
   },
   {
     routeName: "Naxos – Santorini",
@@ -230,7 +230,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     priceMin: 30, priceMax: 90, priceUnit: "per motorcycle + rider",
     duration: "1h 20min (high-speed) / 3h (regular)",
     schedule: "2 per day",
-    bookingUrl: "https://www.bluestarferries.com/en/routes/naxos-santorini",
+    bookingUrl: "https://www.bluestarferries.com/en-gb",
   },
 
   // ── Baltic Sea ────────────────────────────────────────────────────────────────
