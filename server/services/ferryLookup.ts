@@ -202,6 +202,36 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     duration: "1h 45min", schedule: "Hourly in peak season",
     bookingUrl: "https://www.ionianferries.gr",
   },
+  // ── Cyclades (Greek Islands) ──────────────────────────────────────────────────
+  {
+    routeName: "Piraeus – Mykonos",
+    startPortName: "Piraeus", startCoords: { lat: 37.9475, lng: 23.6461 },
+    endPortName:   "Mykonos", endCoords:   { lat: 37.4467, lng: 25.3289 },
+    operator: "Blue Star Ferries",
+    priceMin: 45, priceMax: 120, priceUnit: "per motorcycle + rider",
+    duration: "2h 45min (high-speed) / 5h (regular)",
+    schedule: "3 departures/day in peak season",
+    bookingUrl: "https://www.bluestarferries.com/en/routes/piraeus-mykonos",
+  },
+  {
+    routeName: "Mykonos – Naxos",
+    startPortName: "Mykonos", startCoords: { lat: 37.4467, lng: 25.3289 },
+    endPortName:   "Naxos",   endCoords:   { lat: 37.1036, lng: 25.3762 },
+    operator: "SeaJets / Blue Star Ferries",
+    priceMin: 25, priceMax: 70, priceUnit: "per motorcycle + rider",
+    duration: "1h 10min", schedule: "2–3 per day",
+    bookingUrl: "https://www.seajets.com/routes/mykonos-naxos",
+  },
+  {
+    routeName: "Naxos – Santorini",
+    startPortName: "Naxos",     startCoords: { lat: 37.1036, lng: 25.3762 },
+    endPortName:   "Santorini", endCoords:   { lat: 36.3932, lng: 25.4615 },
+    operator: "Blue Star Ferries",
+    priceMin: 30, priceMax: 90, priceUnit: "per motorcycle + rider",
+    duration: "1h 20min (high-speed) / 3h (regular)",
+    schedule: "2 per day",
+    bookingUrl: "https://www.bluestarferries.com/en/routes/naxos-santorini",
+  },
 
   // ── Baltic Sea ────────────────────────────────────────────────────────────────
   {
