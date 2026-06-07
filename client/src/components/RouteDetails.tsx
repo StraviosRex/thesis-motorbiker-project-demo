@@ -6,6 +6,7 @@ import { SavedRoute, formatDistance, formatDuration } from "@/lib/utils";
 import { PointsOfInterest } from "./PointsOfInterest";
 import { Accommodation } from "./Accommodation";
 import { FerryInfo } from "./FerryInfo";
+import { WeatherWidget } from "./WeatherWidget";
 
 interface RouteDetailsProps {
   routeId?: number;
@@ -211,6 +212,21 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, class
                 </div>
               </div>
               
+              {/* Weather */}
+              <div className="p-4 border-t border-gray-200">
+                <h3 className="font-medium text-primary mb-3">Weather</h3>
+                <div className="space-y-2">
+                  <WeatherWidget
+                    locationName={routeData.startLocation.name}
+                    coordinates={routeData.startLocation.coordinates}
+                  />
+                  <WeatherWidget
+                    locationName={routeData.endLocation.name}
+                    coordinates={routeData.endLocation.coordinates}
+                  />
+                </div>
+              </div>
+
               {/* Points of Interest Section */}
               <PointsOfInterest points={routeData.pointsOfInterest} />
               

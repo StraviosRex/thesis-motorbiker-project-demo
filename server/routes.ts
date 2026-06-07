@@ -18,6 +18,7 @@ import { z } from "zod";
 import { calculateDynamicRoute } from "./services/dynamicRoute";
 import { POIService } from "./services/poi";
 import { findFerryPrices } from "./services/ferryLookup";
+import { getWeatherForLocation } from "./services/weather";
 
 // Simple in-memory cache for POIs
 const poiCache = new Map<number, { pois: any[], timestamp: number }>();
@@ -235,6 +236,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json(result);
+  });
+
+  // On-demand weather lookup via Open-Meteo (no API key required)
+  app.get(`${apiPrefix}/weather`, async (req, res) => {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ message: "lat and lng are required" });
+    }
+
+    const data = await getWeatherForLocation(lat, lng);
+    if (!data) {
+      return res.status(502).json({ message: "Could not fetch weather data" });
+    }
+
+    res.json(data);
   });
 
   // Route search
