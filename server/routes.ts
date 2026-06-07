@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { eq } from "drizzle-orm";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
 import { 
   savedRoutes, 
   pointsOfInterest, 
@@ -20,9 +22,49 @@ import { POIService } from "./services/poi";
 import { findFerryPrices } from "./services/ferryLookup";
 import { getWeatherForLocation } from "./services/weather";
 
-// Simple in-memory cache for POIs
+// Simple in-memory cache for POIs with file persistence
+const POI_CACHE_DIR = join(process.cwd(), "cache", "pois");
 const poiCache = new Map<number, { pois: any[], timestamp: number }>();
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
+const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 hours
+
+function loadPoiCacheFromDisk() {
+  try {
+    if (!existsSync(POI_CACHE_DIR)) {
+      mkdirSync(POI_CACHE_DIR, { recursive: true });
+      return;
+    }
+    const entries = readFileSync(join(POI_CACHE_DIR, "index.json"), "utf-8");
+    const index: number[] = JSON.parse(entries);
+    for (const routeId of index) {
+      const filePath = join(POI_CACHE_DIR, `${routeId}.json`);
+      if (existsSync(filePath)) {
+        const data = JSON.parse(readFileSync(filePath, "utf-8"));
+        if (data.timestamp && Date.now() - data.timestamp < CACHE_DURATION) {
+          poiCache.set(routeId, data);
+          console.log(`[POI Cache] Loaded ${data.pois.length} POIs for route ${routeId} from disk`);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[POI Cache] Failed to load cache from disk:", (e as Error).message);
+  }
+}
+
+function savePoiCacheToDisk(routeId: number, data: { pois: any[], timestamp: number }) {
+  try {
+    if (!existsSync(POI_CACHE_DIR)) {
+      mkdirSync(POI_CACHE_DIR, { recursive: true });
+    }
+    writeFileSync(join(POI_CACHE_DIR, `${routeId}.json`), JSON.stringify(data));
+    const index = Array.from(poiCache.keys());
+    writeFileSync(join(POI_CACHE_DIR, "index.json"), JSON.stringify(index));
+  } catch (e) {
+    console.warn("[POI Cache] Failed to save cache to disk:", (e as Error).message);
+  }
+}
+
+// Pre-load cache on module load
+loadPoiCacheFromDisk();
 
 const calculateRouteSchema = z.object({
   startLocation: z.string().min(1, "Starting location is required"),
@@ -94,11 +136,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[API] Collected ${allWaypoints.length} major points from route`);
 
       const poiService = new POIService();
-      // 8 per location = 2 of each priority type (gas, repair, hotel, restaurant)
+      // 8 per location = balanced across gas, repair, parking, hotel, restaurant
       const pois = await poiService.getPOIsAlongRoute(allWaypoints, 10, 8);
 
-      // Cache the results
-      poiCache.set(routeId, { pois, timestamp: Date.now() });
+      // Cache the results (memory + disk)
+      const cacheEntry = { pois, timestamp: Date.now() };
+      poiCache.set(routeId, cacheEntry);
+      savePoiCacheToDisk(routeId, cacheEntry);
 
       console.log(`[API] Found and cached ${pois.length} POIs for route ${routeId}`);
       res.json(pois);
@@ -269,6 +313,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error searching routes:", error);
       res.status(500).json({ message: "Failed to search routes" });
     }
+  });
+
+  // Flush POI cache — clears memory + disk so next request fetches fresh data
+  // Optional: ?routeId=1 to flush a single route, omit to flush all
+  app.delete(`${apiPrefix}/poi-cache`, (req, res) => {
+    const routeIdParam = req.query.routeId as string | undefined;
+
+    if (routeIdParam) {
+      const routeId = parseInt(routeIdParam);
+      if (isNaN(routeId)) {
+        return res.status(400).json({ message: "Invalid routeId" });
+      }
+      poiCache.delete(routeId);
+      try {
+        const filePath = join(POI_CACHE_DIR, `${routeId}.json`);
+        if (existsSync(filePath)) {
+          const { unlinkSync } = require("fs");
+          unlinkSync(filePath);
+        }
+        const index = Array.from(poiCache.keys());
+        writeFileSync(join(POI_CACHE_DIR, "index.json"), JSON.stringify(index));
+      } catch (e) {
+        console.warn("[POI Cache] Failed to delete cache file:", (e as Error).message);
+      }
+      console.log(`[POI Cache] Flushed cache for route ${routeId}`);
+      return res.json({ message: `Cache cleared for route ${routeId}` });
+    }
+
+    // Flush all
+    const count = poiCache.size;
+    poiCache.clear();
+    try {
+      const { rmSync } = require("fs");
+      rmSync(POI_CACHE_DIR, { recursive: true, force: true });
+    } catch (e) {
+      console.warn("[POI Cache] Failed to delete cache dir:", (e as Error).message);
+    }
+    console.log(`[POI Cache] Flushed all ${count} cached routes`);
+    res.json({ message: `Cache cleared for ${count} route(s)` });
   });
 
   const httpServer = createServer(app);

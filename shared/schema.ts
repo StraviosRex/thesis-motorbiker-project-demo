@@ -77,7 +77,9 @@ export const routeSegments = pgTable("route_segments", {
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
   notes: text("notes"),
-  isScenic: boolean("is_scenic").default(false)
+  isScenic: boolean("is_scenic").default(false),
+  surfaceData: jsonb("surface_data").$type<{ asphalt: number; gravel: number; dirt: number }>(),
+  speedLimits: jsonb("speed_limits").$type<{ motorway?: number; rural: number; urban: number }>(),
 });
 
 export const routeSegmentsRelations = relations(routeSegments, ({ one, many }) => ({

@@ -4,7 +4,7 @@ import { RoutePlanner } from "./RoutePlanner";
 import { MapArea } from "./MapArea";
 import { RouteDetails } from "./RouteDetails";
 import { useMobile } from "@/hooks/use-mobile";
-import { SavedRoute } from "@/lib/utils";
+import { SavedRoute, BikeClass } from "@/lib/utils";
 
 /**
  * Props for AppLayout.
@@ -36,6 +36,11 @@ export function AppLayout({
   routeId
 }: AppLayoutProps) {
   const isMobile = useMobile();
+
+  const [bikeClass, setBikeClass] = useState<BikeClass | null>(null);
+  const [startLocation, setStartLocation] = useState("");
+  const [endLocation, setEndLocation] = useState("");
+  const [isCalculating, setIsCalculating] = useState(false);
 
   // Whether the left RoutePlanner sidebar is visible; hidden by default on mobile.
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -100,40 +105,58 @@ export function AppLayout({
 
   return (
     <div className="flex flex-col h-screen">
-      <Header />
+      <Header
+        startLocation={startLocation}
+        endLocation={endLocation}
+        onStartChange={setStartLocation}
+        onEndChange={setEndLocation}
+        onCalculate={() => window.dispatchEvent(new CustomEvent('headerCalculateRoute'))}
+        isCalculating={isCalculating}
+      />
 
       <div className="flex flex-1 h-screen-minus-header">
         {/* RoutePlanner sidebar — conditionally mounted; on mobile it slides in
             from the left via CSS translate so the map underneath stays live. */}
+        {/* Mobile backdrop — tapping it closes whichever panel is open */}
+        {isMobile && (sidebarOpen || routePanelOpen) && (
+          <div
+            className="absolute inset-0 z-40 bg-black/40"
+            onClick={() => {
+              setSidebarOpen(false);
+              setRoutePanelOpen(false);
+            }}
+          />
+        )}
+
         {showRoutePlanner && (
           <RoutePlanner
             onCalculateRoute={handleCalculateRoute}
-            // Only pass the toggle callback on mobile; on desktop the sidebar
-            // is always visible so no toggle button is needed.
             onToggleSidebar={isMobile ? toggleSidebar : undefined}
+            bikeClass={bikeClass}
+            onBikeClassChange={setBikeClass}
+            startLocation={startLocation}
+            endLocation={endLocation}
+            onStartChange={setStartLocation}
+            onEndChange={setEndLocation}
+            onCalculatingChange={setIsCalculating}
             className={`transform transition-transform duration-300 ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} ${isMobile ? 'absolute z-50' : ''}`}
           />
         )}
 
-        {/* MapArea always renders so the map instance is never destroyed.
-            onToggleRoutePanel is only wired up when there is something to show
-            in the details panel (saved route or a just-calculated dynamic one). */}
         <MapArea
           routeId={routeId}
           onToggleSidebar={toggleSidebar}
           onToggleRoutePanel={(showRouteDetails || !!dynamicRoute) ? toggleRoutePanel : undefined}
+          bikeClass={bikeClass}
+          onBikeClassChange={setBikeClass}
         />
 
-        {/* RouteDetails panel — rendered when viewing a saved route page OR
-            when a dynamic route has been calculated. On mobile it slides in
-            from the right. Prefers dynamicRoute data over fetching by routeId
-            so newly calculated routes are shown instantly without a DB round-trip. */}
         {(showRouteDetails || dynamicRoute) && (
           <RouteDetails
             routeId={dynamicRoute ? undefined : routeId}
             routeData={dynamicRoute ?? undefined}
-            // Close button is only useful on mobile where the panel is an overlay.
             onClose={isMobile ? toggleRoutePanel : undefined}
+            bikeClass={bikeClass}
             className={`transform transition-transform duration-300 ${isMobile && !routePanelOpen ? 'translate-x-full' : 'translate-x-0'} ${isMobile ? 'absolute right-0 z-50' : ''}`}
           />
         )}
