@@ -64,7 +64,7 @@ export function FerryInfo({ includeFerries, ferryRoutes = [] }: FerryInfoProps) 
     <div className="p-4 border-t border-gray-200">
       <h3 className="font-medium text-primary mb-3">Ferry Crossings Nearby</h3>
 
-      <div className="bg-ferry-blue bg-opacity-10 p3 rounded-md text-sm">
+      <div className="bg-ferry-blue bg-opacity-10 p-3 rounded-md text-sm">
         {hasFerryRoutes ? (
           <div className="space-y-2">
             {ferryRoutes.map((ferry) => {
