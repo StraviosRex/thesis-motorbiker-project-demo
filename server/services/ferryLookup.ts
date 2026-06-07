@@ -36,7 +36,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "DFDS / P&O Ferries",
     priceMin: 50, priceMax: 130, priceUnit: "per motorcycle + rider",
     duration: "1h 30min", schedule: "Up to 50 crossings/day",
-    bookingUrl: "https://www.dfds.com/en-gb/passenger-ferries/ferry-crossings/dover-calais",
+    bookingUrl: "https://www.dfds.com/en/passenger-ferries/yourbooking",
   },
   {
     routeName: "Harwich – Hook of Holland",
@@ -55,7 +55,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "DFDS",
     priceMin: 100, priceMax: 280, priceUnit: "per motorcycle + rider",
     duration: "16–17h", schedule: "1 departure/day",
-    bookingUrl: "https://www.dfds.com/en-gb/passenger-ferries/ferry-crossings/newcastle-amsterdam",
+    bookingUrl: "https://www.dfds.com/en/passenger-ferries/yourbooking",
   },
 
   // ── Bay of Biscay ────────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ const KNOWN_FERRY_ROUTES: KnownFerryRoute[] = [
     operator: "DFDS",
     priceMin: 80, priceMax: 220, priceUnit: "per motorcycle + rider",
     duration: "17h (overnight)", schedule: "Daily",
-    bookingUrl: "https://www.dfds.com/en/passenger-ferries/ferry-crossings/copenhagen-oslo",
+    bookingUrl: "https://www.dfds.com/en/passenger-ferries/yourbooking",
   },
 ];
 
