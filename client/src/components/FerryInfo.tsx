@@ -60,7 +60,7 @@ export function FerryInfo({ includeFerries, ferryRoutes = [], onPriceChecked }: 
       <div className="flex items-center justify-between mb-3">
         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Ferry Crossings</span>
         {hasFerryRoutes && (
-          <span className="text-slate-600 text-[10px]">{ferryRoutes.length} route{ferryRoutes.length !== 1 ? 's' : ''}</span>
+          <span className="text-slate-400 text-[10px]">{ferryRoutes.length} route{ferryRoutes.length !== 1 ? 's' : ''}</span>
         )}
       </div>
 
@@ -88,7 +88,7 @@ export function FerryInfo({ includeFerries, ferryRoutes = [], onPriceChecked }: 
                           €{ps.data.priceMin}–{ps.data.priceMax}
                         </div>
                       ) : (
-                        <div className="text-slate-500 text-xs">€{ferry.price} <span className="text-slate-600">est.</span></div>
+                        <div className="text-white text-xs">€{ferry.price} <span className="text-slate-300">est.</span></div>
                       )}
                     </div>
                   </div>
@@ -96,7 +96,7 @@ export function FerryInfo({ includeFerries, ferryRoutes = [], onPriceChecked }: 
                   {/* Status-dependent footer */}
                   {ps.status === "idle" && (
                     <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-slate-500">{ferry.operator} · {ferry.schedule}</span>
+                      <span className="text-white">{ferry.operator} · {ferry.schedule}</span>
                       <button
                         onClick={() => checkPrices(ferry)}
                         className="text-orange-400 hover:text-orange-300 font-medium transition"
@@ -118,11 +118,11 @@ export function FerryInfo({ includeFerries, ferryRoutes = [], onPriceChecked }: 
 
                   {ps.status === "loaded" && (
                     <div className="mt-2 text-xs space-y-1">
-                      <div className="flex items-center justify-between text-slate-400">
+                      <div className="flex items-center justify-between text-white">
                         <span>{ps.data.operator}</span>
-                        <span className="text-slate-500">{ps.data.priceUnit}</span>
+                        <span className="text-slate-300">{ps.data.priceUnit}</span>
                       </div>
-                      <div className="text-slate-500">{ps.data.duration} · {ps.data.schedule}</div>
+                      <div className="text-white">{ps.data.duration} · {ps.data.schedule}</div>
                       <a
                         href={ps.data.bookingUrl}
                         target="_blank"
@@ -159,7 +159,7 @@ export function FerryInfo({ includeFerries, ferryRoutes = [], onPriceChecked }: 
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+      <div className="mt-3 flex items-center justify-between text-xs text-slate-200">
         <span>Need different ferry options?</span>
         <button className="text-orange-400 hover:text-orange-300 font-medium transition">
           Explore routes →

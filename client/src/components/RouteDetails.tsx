@@ -158,7 +158,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                   { label: "Est. Cost", value: `€${totalEstimatedCost}`, accent: true },
                 ].map(({ label, value, accent }) => (
                   <div key={label} className="bg-slate-800 rounded-lg px-2 py-2 text-center">
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</div>
                     <div className={`font-bold text-sm mt-0.5 ${accent ? "text-orange-400" : "text-white"}`}>{value}</div>
                   </div>
                 ))}
@@ -215,7 +215,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                         { label: "Food (~€30/day)", val: `€${foodCost}` },
                         { label: `Ferries${Object.keys(checkedFerryPrices).length > 0 ? ' (verified)' : ''}`, val: `€${ferryCost}` },
                       ].map(({ label, val }) => (
-                        <div key={label} className="flex justify-between text-slate-400 py-0.5">
+                        <div key={label} className="flex justify-between text-white py-0.5">
                           <span>{label}</span><span>{val}</span>
                         </div>
                       ))}
@@ -223,7 +223,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                         <span>Total</span>
                         <span className="text-orange-400">€{totalEstimatedCost}</span>
                       </div>
-                      <p className="mt-1.5 text-[10px] text-slate-600">Avg 5L/100km at €1.70/L. Accom. €70/night.</p>
+                      <p className="mt-1.5 text-[10px] text-slate-400">Avg 5L/100km at €1.70/L. Accom. €70/night.</p>
                     </div>
                   </div>
                 )}
@@ -237,7 +237,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                 >
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Route Segments</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-xs">{routeData.segments.length} day{routeData.segments.length !== 1 ? 's' : ''}</span>
+                    <span className="text-slate-400 text-xs">{routeData.segments.length} day{routeData.segments.length !== 1 ? 's' : ''}</span>
                     <Chevron open={segmentsOpen} />
                   </div>
                 </button>
@@ -270,7 +270,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                             </div>
                             <div className="pb-2">
                               <div className="font-semibold text-white text-sm leading-tight">{segment.startLocation.name}</div>
-                              <div className="text-xs text-slate-500">Depart {segment.startTime}</div>
+                              <div className="text-xs text-slate-400">Depart {segment.startTime}</div>
                             </div>
                           </div>
 
@@ -286,7 +286,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                                 </div>
                                 <div className="pb-2">
                                   <div className="font-semibold text-white text-sm leading-tight">{waypoint.name}</div>
-                                  <div className="text-xs text-slate-500">Waypoint</div>
+                                  <div className="text-xs text-slate-400">Waypoint</div>
                                 </div>
                               </div>
                             </Fragment>
@@ -303,14 +303,14 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                             </div>
                             <div>
                               <div className="font-semibold text-white text-sm leading-tight">{segment.endLocation.name}</div>
-                              <div className="text-xs text-slate-500">Arrive {segment.endTime}</div>
+                              <div className="text-xs text-slate-400">Arrive {segment.endTime}</div>
                             </div>
                           </div>
 
                           {/* Road surface bar */}
                           {segment.surfaceData && (
                             <div className="mt-3 pt-3 border-t border-slate-700/50">
-                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Road Surface</div>
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Road Surface</div>
                               <div className="flex h-2 rounded-full overflow-hidden w-full">
                                 {segment.surfaceData.asphalt > 0 && (
                                   <div style={{ width: `${segment.surfaceData.asphalt}%` }} className="bg-slate-500" title={`Asphalt ${segment.surfaceData.asphalt}%`} />
@@ -322,7 +322,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                                   <div style={{ width: `${segment.surfaceData.dirt}%` }} className="bg-orange-700" title={`Dirt/Mud ${segment.surfaceData.dirt}%`} />
                                 )}
                               </div>
-                              <div className="flex flex-wrap gap-x-3 mt-1 text-[10px] text-slate-500">
+                              <div className="flex flex-wrap gap-x-3 mt-1 text-[10px] text-slate-400">
                                 {segment.surfaceData.asphalt > 0 && (
                                   <span className="flex items-center gap-1">
                                     <span className="inline-block w-2 h-2 rounded-sm bg-slate-500" />{segment.surfaceData.asphalt}% asphalt
@@ -381,7 +381,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
               <div className="border-b border-slate-700">
                 <div className="px-4 py-3 flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Weather</span>
-                  <span className="text-slate-600 text-[10px]">{getAllRouteLocations(routeData).length} cities</span>
+                  <span className="text-slate-400 text-[10px]">{getAllRouteLocations(routeData).length} cities</span>
                 </div>
                 <div className="px-4 pb-3">
                   <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-700/60">

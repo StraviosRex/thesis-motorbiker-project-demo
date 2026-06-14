@@ -8,3 +8,6 @@ vite.config.ts.*
 .local/
 test-*.mjs
 cache/
+
+# Local Netlify folder
+.netlify
