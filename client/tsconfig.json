@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "src/client/**/*",
+    "src/server/**/*",
+    "src/db/**/*"
+  ],
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@db": ["./db/index.ts"],
+      "@db/*": ["./db/*"],
+      "@/*": ["./client/src/*"],
+      "@shared/*": ["./shared/*"]
+    }
+  }
+}

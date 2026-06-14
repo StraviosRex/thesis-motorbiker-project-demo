@@ -1,13 +1,1821 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
-    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>MotoRoute Europe - Motorcycle Route Planner</title>
+  <meta name="description" content="Plan your motorcycle trips across Europe with MotoRoute Europe. Find optimal routes, scenic roads, ferry connections, accommodations and more." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: hsl(217, 55%, 24%);
+      --primary-light: hsl(217, 45%, 33%);
+      --primary-fg: hsl(210, 40%, 98%);
+      --accent: hsl(16, 100%, 56%);
+      --accent-light: hsl(15, 100%, 70%);
+      --secondary: hsl(218, 11%, 43%);
+      --light-bg: hsl(214, 100%, 97%);
+      --ferry-blue: hsl(200, 96%, 49%);
+      --scenic-green: hsl(142, 67%, 45%);
+      --border: hsl(214.3, 31.8%, 91.4%);
+      --muted-fg: hsl(215.4, 16.3%, 46.9%);
+      --bg: hsl(210, 40%, 98%);
+      --radius: 0.5rem;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: hsl(222.2, 84%, 4.9%);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    h1,h2,h3,h4,h5,h6 { font-family: 'Montserrat', sans-serif; }
+
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ===== HEADER ===== */
+    header {
+      background: var(--primary);
+      color: white;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+      z-index: 100;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-left svg { width: 32px; height: 32px; }
+    .header-title { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.3rem; color: white; text-decoration: none; }
+    .btn-signin {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-weight: 500;
+      cursor: pointer;
+      font-size: .875rem;
+      transition: background .15s;
+    }
+    .btn-signin:hover { background: var(--accent-light); }
+
+    /* ===== MAIN LAYOUT ===== */
+    .main { display: flex; flex: 1; height: calc(100vh - 64px); overflow: hidden; }
+
+    /* ===== SIDEBAR (Route Planner) ===== */
+    .sidebar {
+      width: 256px;
+      min-width: 256px;
+      background: white;
+      box-shadow: 2px 0 8px rgba(0,0,0,.08);
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .sidebar-body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .sidebar-body::-webkit-scrollbar { width: 6px; }
+    .sidebar-body::-webkit-scrollbar-track { background: #f1f1f1; }
+    .sidebar-body::-webkit-scrollbar-thumb { background: #64748B; border-radius: 3px; }
+
+    /* Form elements */
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: .8125rem;
+      font-weight: 500;
+      color: hsl(215, 20%, 35%);
+      margin-bottom: 4px;
+    }
+    .form-input-wrap { position: relative; }
+    .form-input {
+      width: 100%;
+      padding: 8px 36px 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: .875rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border .15s;
+    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-input-icon {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      width: 20px; height: 20px;
+    }
+
+    .add-waypoint {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: .8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 0;
+    }
+    .add-waypoint:hover { text-decoration: underline; }
+    .add-waypoint svg { width: 16px; height: 16px; }
+
+    .prefs-title { font-weight: 500; color: hsl(215, 20%, 35%); margin-bottom: 8px; font-size: .875rem; }
+    .pref-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: .8125rem;
+      color: hsl(215, 20%, 35%);
+    }
+    .pref-row input[type=checkbox] {
+      accent-color: var(--accent);
+      width: 16px; height: 16px;
+    }
+    .date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .date-grid label { font-size: .6875rem; color: #6b7280; margin-bottom: 2px; display: block; }
+    .date-input {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: .8125rem;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .btn-calculate {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-weight: 500;
+      font-size: .875rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background .15s;
+    }
+    .btn-calculate:hover { background: var(--accent-light); }
+    .btn-calculate svg { width: 20px; height: 20px; }
+    .btn-calculate.loading { opacity: .7; pointer-events: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin .8s linear infinite; }
+
+    .waypoint-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .waypoint-row .form-input { flex: 1; }
+    .wp-remove {
+      background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px;
+      border-radius: 50%; transition: color .15s;
+    }
+    .wp-remove:hover { color: #ef4444; }
+
+    /* Saved Routes */
+    .saved-title { font-weight: 500; color: hsl(215, 20%, 35%); margin-bottom: 8px; font-size: .875rem; }
+    .saved-route {
+      background: var(--light-bg);
+      padding: 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background .15s;
+      margin-bottom: 8px;
+    }
+    .saved-route:hover { background: hsl(214, 80%, 93%); }
+    .saved-route h4 { font-size: .8125rem; font-weight: 500; margin-bottom: 2px; }
+    .saved-route .desc { font-size: .6875rem; color: #6b7280; }
+    .saved-route .meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: .6875rem;
+    }
+    .saved-route .meta .dist { color: #6b7280; }
+    .saved-route .meta .date { color: var(--primary); }
+
+    /* ===== MAP AREA ===== */
+    .map-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .map-toolbar {
+      background: white;
+      padding: 8px 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+    .map-toolbar-left { display: flex; align-items: center; gap: 8px; }
+    .toolbar-btn {
+      padding: 6px;
+      border-radius: var(--radius);
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: #4b5563;
+      transition: background .15s;
+    }
+    .toolbar-btn:hover { background: #f3f4f6; }
+    .toolbar-btn svg { width: 20px; height: 20px; }
+    .map-style-btns { display: flex; gap: 2px; }
+    .map-style-btn {
+      padding: 4px 12px;
+      font-size: .8125rem;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: #4b5563;
+      background: none;
+      transition: all .15s;
+    }
+    .map-style-btn.active { color: var(--primary); background: var(--light-bg); }
+    .map-style-btn:hover { background: hsl(214, 80%, 93%); }
+
+    .zoom-btns {
+      display: flex;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+      overflow: hidden;
+    }
+    .zoom-btn {
+      padding: 6px;
+      border: none;
+      background: white;
+      cursor: pointer;
+      color: #4b5563;
+      transition: background .15s;
+    }
+    .zoom-btn:hover { background: #f3f4f6; }
+    .zoom-btn + .zoom-btn { border-left: 1px solid var(--border); }
+    .zoom-btn svg { width: 20px; height: 20px; }
+
+    .map-container-wrap { flex: 1; position: relative; min-height: 0; }
+    #map { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; }
+
+    /* Map legend */
+    .map-legend {
+      position: absolute;
+      bottom: 40px;
+      left: 16px;
+      z-index: 400;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+      padding: 16px;
+      max-width: 200px;
+    }
+    .legend-title { font-size: .8125rem; font-weight: 600; color: var(--primary); margin-bottom: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .6875rem; }
+    .legend-line { width: 16px; height: 3px; border-radius: 2px; }
+    .legend-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .map-attribution {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      z-index: 400;
+      font-size: .6875rem;
+      color: black;
+      background: rgba(255,255,255,.7);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* ===== ROUTE DETAILS PANEL ===== */
+    .route-panel {
+      width: 320px;
+      min-width: 320px;
+      background: white;
+      box-shadow: -2px 0 8px rgba(0,0,0,.08);
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+      overflow: hidden;
+    }
+    .route-panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--primary);
+      color: white;
+    }
+    .route-panel-header h2 { font-size: 1.1rem; font-weight: 600; }
+    .route-panel-close {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition: background .15s;
+    }
+    .route-panel-close:hover { background: var(--primary-light); }
+    .route-panel-close svg { width: 20px; height: 20px; }
+
+    .route-summary {
+      padding: 16px;
+      background: var(--light-bg);
+    }
+    .route-summary-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .route-summary h3 { font-size: .9375rem; font-weight: 500; }
+    .route-summary .via { font-size: .8125rem; color: #6b7280; margin-top: 2px; }
+    .route-summary-actions { display: flex; gap: 4px; }
+    .icon-btn {
+      background: none;
+      border: none;
+      padding: 4px;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--primary);
+      transition: background .15s;
+    }
+    .icon-btn:hover { background: hsl(214, 80%, 93%); }
+    .icon-btn svg { width: 20px; height: 20px; }
+
+    .route-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: 16px;
+      font-size: .8125rem;
+    }
+    .route-stat { text-align: center; }
+    .route-stat .label { color: #6b7280; }
+    .route-stat .value { font-weight: 500; font-size: .9375rem; margin-top: 2px; }
+
+    .cost-breakdown {
+      background: white;
+      border-radius: var(--radius);
+      padding: 10px;
+      border: 1px solid var(--border);
+    }
+    .cost-breakdown-title { font-size: .6875rem; font-weight: 500; color: var(--primary); margin-bottom: 8px; }
+    .cost-bar-wrap { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+    .cost-bar-seg { height: 100%; min-width: 2px; }
+    .cost-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cost-legend-item { display: flex; align-items: center; gap: 4px; font-size: .625rem; }
+    .cost-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cost-legend-amount { font-weight: 500; }
+
+    .route-panel-body {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .route-panel-body::-webkit-scrollbar { width: 6px; }
+    .route-panel-body::-webkit-scrollbar-track { background: #f1f1f1; }
+    .route-panel-body::-webkit-scrollbar-thumb { background: #64748B; border-radius: 3px; }
+
+    /* Segments */
+    .segments-section { padding: 16px; }
+    .segments-title { font-weight: 500; color: var(--primary); margin-bottom: 12px; font-size: .9375rem; }
+    .segment-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .segment-header {
+      background: #f9fafb;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .segment-header .title { font-weight: 500; font-size: .8125rem; }
+    .segment-header .dist { font-size: .8125rem; color: #6b7280; }
+    .segment-body { padding: 12px; }
+
+    .timeline-point {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .timeline-dot {
+      margin-top: 4px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .timeline-dot .inner { width: 8px; height: 8px; border-radius: 50%; background: white; }
+    .timeline-dot.primary { background: var(--primary); }
+    .timeline-dot.scenic { background: var(--scenic-green); }
+    .timeline-name { font-weight: 500; font-size: .8125rem; }
+    .timeline-sub { font-size: .75rem; color: #6b7280; }
+    .timeline-line {
+      margin-left: 7px;
+      height: 40px;
+      border-left: 2px dashed #d1d5db;
+    }
+    .segment-note {
+      margin-top: 12px;
+      background: var(--light-bg);
+      border-radius: var(--radius);
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: .8125rem;
+    }
+    .segment-note svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+
+    /* POI section */
+    .poi-section, .acc-section, .ferry-section {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .section-title { font-weight: 500; color: var(--primary); margin-bottom: 12px; font-size: .9375rem; }
+
+    .poi-card {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      background: var(--light-bg);
+      padding: 8px;
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      transition: background .15s, box-shadow .15s;
+    }
+    .poi-card[data-poi-idx]:hover {
+      background: hsl(214, 80%, 93%);
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+    .poi-icon {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .poi-icon svg { width: 16px; height: 16px; }
+    .poi-name { font-weight: 500; font-size: .8125rem; }
+    .poi-desc { font-size: .6875rem; color: #4b5563; }
+    .poi-rating { display: flex; align-items: center; gap: 2px; margin-top: 4px; }
+    .poi-rating svg { width: 12px; height: 12px; }
+    .poi-rating .count { font-size: .6875rem; color: #6b7280; margin-left: 4px; }
+
+    /* Accommodation */
+    .acc-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .acc-top { display: flex; justify-content: space-between; }
+    .acc-name { font-weight: 500; font-size: .875rem; }
+    .acc-desc { font-size: .8125rem; color: #4b5563; }
+    .acc-price { color: var(--accent); font-weight: 500; }
+    .acc-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: .8125rem; }
+    .acc-rating { display: flex; align-items: center; gap: 4px; }
+    .acc-rating svg { width: 16px; height: 16px; color: #eab308; }
+    .acc-feature { display: flex; align-items: center; gap: 4px; color: #16a34a; font-size: .8125rem; }
+    .acc-feature svg { width: 16px; height: 16px; }
+
+    /* Ferry */
+    .ferry-box {
+      background: rgba(14, 165, 233, .1);
+      padding: 12px;
+      border-radius: var(--radius);
+      font-size: .8125rem;
+    }
+    .btn-ferry {
+      margin-top: 8px;
+      background: var(--ferry-blue);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: .6875rem;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-ferry:hover { background: hsl(200, 80%, 40%); }
+
+    .ferry-card {
+      background: rgba(14, 165, 233, .08);
+      border: 1px solid rgba(14, 165, 233, .25);
+      border-radius: var(--radius);
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+    .ferry-card .fc-name { font-weight: 500; font-size: .8125rem; color: var(--ferry-blue); }
+    .ferry-card .fc-operator { font-size: .75rem; color: #6b7280; }
+    .ferry-card .fc-details { display: flex; justify-content: space-between; margin-top: 6px; font-size: .75rem; }
+    .ferry-card .fc-price { color: var(--accent); font-weight: 500; }
+    .ferry-card .fc-schedule { font-size: .6875rem; color: #6b7280; margin-top: 4px; }
+
+    /* Star SVGs */
+    .star-filled { fill: #eab308; }
+    .star-empty { fill: #d1d5db; }
+
+    /* Responsive: hide sidebar/panel on narrow screens */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .route-panel { display: none; }
+    }
+
+    /* Leaflet overrides — prevent CSS reset from breaking tile layout */
+    .leaflet-container img { max-width: none !important; max-height: none !important; }
+    .leaflet-container { font-family: inherit; }
+    .leaflet-tile-pane,
+    .leaflet-tile-container,
+    .leaflet-tile { margin: 0 !important; padding: 0 !important; }
+    .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+    .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas,
+    .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+    .leaflet-tile {
+      -webkit-user-select: none;
+      user-select: none;
+      visibility: visible !important;
+    }
+    .leaflet-control-zoom { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div class="app" style="display:none;" aria-hidden="true">
+    <!-- HEADER -->
+    <header>
+      <div class="header-left">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 10.364a9 9 0 11-12.728 0M15 15l-4.243-4.243M14 8h-4a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2z" />
+        </svg>
+        <a href="#" class="header-title">MotoRoute Europe</a>
+      </div>
+      <div>
+        <button class="btn-signin">Sign In</button>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <div class="main">
+
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>Route Planner</h2>
+        </div>
+        <div class="sidebar-body">
+          <!-- Start -->
+          <div class="form-group">
+            <label>Start Point</label>
+            <div class="form-input-wrap">
+              <input class="form-input" type="text" placeholder="Enter starting location" value="Berlin" />
+              <svg class="form-input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+            </div>
+          </div>
+          <!-- Destination -->
+          <div class="form-group">
+            <label>Destination</label>
+            <div class="form-input-wrap">
+              <input class="form-input" type="text" placeholder="Enter destination" value="Rome" />
+              <svg class="form-input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+            </div>
+          </div>
+
+          <!-- Add waypoint -->
+          <div id="waypoint-container"></div>
+          <div class="form-group">
+            <button class="add-waypoint" id="btn-add-waypoint">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+              Add Waypoint
+            </button>
+          </div>
+
+          <!-- Preferences -->
+          <div class="form-group">
+            <div class="prefs-title">Route Preferences</div>
+            <label class="pref-row"><input type="checkbox" /> Prefer scenic routes</label>
+            <label class="pref-row"><input type="checkbox" checked /> Avoid highways</label>
+            <label class="pref-row"><input type="checkbox" checked /> Include ferry crossings</label>
+          </div>
+
+          <!-- Dates -->
+          <div class="form-group">
+            <div class="prefs-title">Trip Details</div>
+            <div class="date-grid">
+              <div><label>Start Date</label><input class="date-input" type="date" value="2023-06-15" /></div>
+              <div><label>End Date</label><input class="date-input" type="date" value="2023-06-30" /></div>
+            </div>
+          </div>
+
+          <!-- Calculate -->
+          <button class="btn-calculate" id="btn-calc">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            Calculate Route
+          </button>
+
+          <!-- Saved Routes -->
+          <div style="margin-top:24px;">
+            <div class="saved-title">Saved Routes</div>
+            <div id="saved-routes-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAP -->
+      <div class="map-area">
+        <div class="map-toolbar">
+          <div class="map-toolbar-left">
+            <button class="toolbar-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+            </button>
+            <div class="map-style-btns">
+              <button class="map-style-btn active">Roads</button>
+              <button class="map-style-btn">Satellite</button>
+              <button class="map-style-btn">Terrain</button>
+            </div>
+          </div>
+          <div class="zoom-btns">
+            <button class="zoom-btn" onclick="map.zoomIn()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+            </button>
+            <button class="zoom-btn" onclick="map.zoomOut()">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="map-container-wrap">
+          <div id="map"></div>
+
+          <!-- Legend -->
+          <div class="map-legend">
+            <div class="legend-title">Legend</div>
+            <div class="legend-item">
+              <div class="legend-line" style="background:var(--accent)"></div>
+              <span>Main route</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-line" style="background:var(--scenic-green)"></div>
+              <span>Scenic alternatives</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-line" style="background:var(--ferry-blue)"></div>
+              <span>Ferry routes</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:#ef4444;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;fill:white" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <span>Points of interest</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROUTE DETAILS PANEL -->
+      <div class="route-panel" id="route-panel">
+        <div class="route-panel-header">
+          <h2>Route Details</h2>
+        </div>
+
+        <!-- Summary -->
+        <div class="route-summary">
+          <div class="route-summary-top">
+            <div>
+              <h3 id="rp-title">Berlin to Rome</h3>
+              <div class="via" id="rp-via">Via Munich, Innsbruck, Bolzano</div>
+            </div>
+            <div class="route-summary-actions">
+              <button class="icon-btn" title="Edit route"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg></button>
+              <button class="icon-btn" title="Share route"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/></svg></button>
+              <button class="icon-btn" title="Save route"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/></svg></button>
+            </div>
+          </div>
+          <div class="route-stats">
+            <div class="route-stat"><div class="label">Distance</div><div class="value" id="rp-distance">1,450 km</div></div>
+            <div class="route-stat"><div class="label">Duration</div><div class="value" id="rp-duration">18h 20m</div></div>
+            <div class="route-stat"><div class="label">Ferries</div><div class="value" id="rp-ferries">0</div></div>
+            <div class="route-stat"><div class="label">Est. Cost</div><div class="value" id="rp-cost" style="color:var(--accent)">-</div></div>
+          </div>
+          <div id="cost-breakdown" style="margin-top:12px"></div>
+        </div>
+
+        <!-- Scrollable body -->
+        <div class="route-panel-body" id="rp-body">
+          <!-- Segments -->
+          <div class="segments-section" id="segments-container">
+            <div class="segments-title">Route Segments</div>
+          </div>
+
+          <!-- POIs -->
+          <div class="poi-section" id="poi-container">
+            <div class="section-title">Points of Interest</div>
+          </div>
+
+          <!-- Accommodations -->
+          <div class="acc-section" id="acc-container">
+            <div class="section-title">Accommodation Options</div>
+          </div>
+
+          <!-- Ferry -->
+          <div class="ferry-section" id="ferry-container">
+            <div class="section-title">Ferry Crossings</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="text/plain">
+    function initApp() {
+    // ===== MOCK DATA =====
+    const LOCATIONS = {
+      berlin:      { name: "Berlin",       lat: 52.5200, lng: 13.4050, country: "Germany" },
+      leipzig:     { name: "Leipzig",      lat: 51.3397, lng: 12.3731, country: "Germany" },
+      munich:      { name: "Munich",       lat: 48.1351, lng: 11.5820, country: "Germany" },
+      innsbruck:   { name: "Innsbruck",    lat: 47.2692, lng: 11.4041, country: "Austria" },
+      bolzano:     { name: "Bolzano",      lat: 46.4983, lng: 11.3548, country: "Italy" },
+      florence:    { name: "Florence",     lat: 43.7696, lng: 11.2558, country: "Italy" },
+      rome:        { name: "Rome",         lat: 41.9028, lng: 12.4964, country: "Italy" },
+      copenhagen:  { name: "Copenhagen",   lat: 55.6761, lng: 12.5683, country: "Denmark" },
+      oslo:        { name: "Oslo",         lat: 59.9139, lng: 10.7522, country: "Norway" },
+      gothenburg:  { name: "Gothenburg",   lat: 57.7089, lng: 11.9746, country: "Sweden" },
+      // Adriatic Coast
+      vienna:      { name: "Vienna",       lat: 48.2082, lng: 16.3738, country: "Austria" },
+      ljubljana:   { name: "Ljubljana",    lat: 46.0569, lng: 14.5058, country: "Slovenia" },
+      rijeka:      { name: "Rijeka",       lat: 45.3271, lng: 14.4422, country: "Croatia" },
+      split:       { name: "Split",        lat: 43.5081, lng: 16.4402, country: "Croatia" },
+      dubrovnik:   { name: "Dubrovnik",    lat: 42.6507, lng: 18.0944, country: "Croatia" },
+      zadar:       { name: "Zadar",        lat: 44.1194, lng: 15.2314, country: "Croatia" },
+      // Iberian Loop
+      barcelona:   { name: "Barcelona",    lat: 41.3874, lng: 2.1686,  country: "Spain" },
+      valencia:    { name: "Valencia",     lat: 39.4699, lng: -0.3763, country: "Spain" },
+      granada:     { name: "Granada",      lat: 37.1773, lng: -3.5986, country: "Spain" },
+      seville:     { name: "Seville",      lat: 37.3891, lng: -5.9845, country: "Spain" },
+      lisbon:      { name: "Lisbon",       lat: 38.7223, lng: -9.1393, country: "Portugal" },
+      porto:       { name: "Porto",        lat: 41.1579, lng: -8.6291, country: "Portugal" },
+      madrid:      { name: "Madrid",       lat: 40.4168, lng: -3.7038, country: "Spain" },
+      // Scottish Highlands
+      edinburgh:   { name: "Edinburgh",    lat: 55.9533, lng: -3.1883, country: "UK" },
+      glasgow:     { name: "Glasgow",      lat: 55.8642, lng: -4.2518, country: "UK" },
+      fortWilliam: { name: "Fort William", lat: 56.8198, lng: -5.1052, country: "UK" },
+      inverness:   { name: "Inverness",    lat: 57.4778, lng: -4.2247, country: "UK" },
+      skye:        { name: "Isle of Skye",  lat: 57.2736, lng: -6.2155, country: "UK" },
+      glencoe:     { name: "Glencoe",      lat: 56.6823, lng: -5.0244, country: "UK" },
+      // Greek Island Hop
+      athens:      { name: "Athens",       lat: 37.9838, lng: 23.7275, country: "Greece" },
+      piraeus:     { name: "Piraeus",      lat: 37.9475, lng: 23.6461, country: "Greece" },
+      mykonos:     { name: "Mykonos",      lat: 37.4467, lng: 25.3289, country: "Greece" },
+      naxos:       { name: "Naxos",        lat: 37.1036, lng: 25.3762, country: "Greece" },
+      santorini:   { name: "Santorini",    lat: 36.3932, lng: 25.4615, country: "Greece" },
+      paros:       { name: "Paros",        lat: 37.0856, lng: 25.1489, country: "Greece" },
+    };
+
+    const ROUTES = {
+      alpine: {
+        name: "Alpine Adventure",
+        description: "Berlin to Rome via the Alps",
+        start: LOCATIONS.berlin,
+        end: LOCATIONS.rome,
+        distance: 1450,
+        duration: "18h 20m",
+        ferries: 0,
+        via: "Munich, Innsbruck, Bolzano",
+        dates: { start: "2023-06-15", end: "2023-06-30" },
+        segments: [
+          {
+            day: 1, title: "Berlin to Munich", distance: 586,
+            start: LOCATIONS.berlin, end: LOCATIONS.munich,
+            waypoints: [LOCATIONS.leipzig],
+            startTime: "08:00", endTime: "17:30",
+            notes: "Recommended stop at Leipzig (3h from start)",
+            isScenic: false
+          },
+          {
+            day: 2, title: "Munich to Bolzano", distance: 330,
+            start: LOCATIONS.munich, end: LOCATIONS.bolzano,
+            waypoints: [LOCATIONS.innsbruck],
+            startTime: "09:00", endTime: "16:00",
+            notes: "Scenic route via Brenner Pass with mountain passes",
+            isScenic: true
+          },
+          {
+            day: 3, title: "Bolzano to Rome", distance: 534,
+            start: LOCATIONS.bolzano, end: LOCATIONS.rome,
+            waypoints: [LOCATIONS.florence],
+            startTime: "08:30", endTime: "18:00",
+            notes: null,
+            isScenic: false
+          }
+        ],
+        pois: [
+          { name: "Marienplatz & Glockenspiel", description: "Munich's central square with the famous town hall clock tower", type: "viewpoint", coords: { lat: 48.1374, lng: 11.5755 }, rating: 4.7, reviews: 48200 },
+          { name: "Nordkette Cable Car Station", description: "Ride from Innsbruck old town to 2,300m Alpine panorama in 20 min", type: "viewpoint", coords: { lat: 47.2678, lng: 11.3930 }, rating: 4.6, reviews: 8750 },
+          { name: "Stelvio Pass", description: "Famous Alpine pass with 48 hairpin turns, detour from Bolzano", type: "viewpoint", coords: { lat: 46.5287, lng: 10.4531 }, rating: 4.9, reviews: 12400 },
+          { name: "Piazzale Michelangelo", description: "Panoramic terrace overlooking Florence, perfect sunset stop", type: "viewpoint", coords: { lat: 43.7629, lng: 11.2650 }, rating: 4.8, reviews: 67300 }
+        ],
+        accommodations: [
+          { name: "Biker's Inn - Munich", description: "Motorcycle-friendly hotel", price: 89, coords: LOCATIONS.munich, rating: 4.3, reviews: 98, features: ["Secure parking"] },
+          { name: "Alpine Lodge - Innsbruck", description: "Mountain view rooms", price: 105, coords: LOCATIONS.innsbruck, rating: 4.7, reviews: 143, features: ["Gear drying room"] }
+        ],
+        ferryData: []
+      },
+      scandinavian: {
+        name: "Scandinavian Tour",
+        description: "Copenhagen to Oslo via Sweden",
+        start: LOCATIONS.copenhagen,
+        end: LOCATIONS.oslo,
+        distance: 980,
+        duration: "12h 0m",
+        ferries: 0,
+        via: "Gothenburg",
+        dates: { start: "2023-08-01", end: "2023-08-05" },
+        segments: [
+          {
+            day: 1, title: "Copenhagen to Gothenburg", distance: 310,
+            start: LOCATIONS.copenhagen, end: LOCATIONS.gothenburg,
+            waypoints: [],
+            startTime: "08:00", endTime: "14:00",
+            notes: "Cross the Oresund Bridge",
+            isScenic: false
+          },
+          {
+            day: 2, title: "Gothenburg to Oslo", distance: 290,
+            start: LOCATIONS.gothenburg, end: LOCATIONS.oslo,
+            waypoints: [],
+            startTime: "09:00", endTime: "15:00",
+            notes: "Beautiful coastal route along E6",
+            isScenic: true
+          }
+        ],
+        pois: [
+          { name: "Oresund Bridge", description: "8 km combined rail/road bridge connecting Denmark and Sweden", type: "viewpoint", coords: { lat: 55.5713, lng: 12.8491 }, rating: 4.6, reviews: 15400 },
+          { name: "Gothenburg Archipelago", description: "Scenic island chain accessible by ferry from the harbor", type: "viewpoint", coords: { lat: 57.6590, lng: 11.8170 }, rating: 4.7, reviews: 3200 },
+          { name: "Viking Ship Museum - Oslo", description: "World's best-preserved Viking ships from the 9th century", type: "viewpoint", coords: { lat: 59.9048, lng: 10.6845 }, rating: 4.5, reviews: 21600 }
+        ],
+        accommodations: [
+          { name: "Harbor Hotel - Gothenburg", description: "Waterfront accommodation", price: 120, coords: LOCATIONS.gothenburg, rating: 4.5, reviews: 201, features: ["Harbor view"] }
+        ],
+        ferryData: []
+      },
+      adriatic: {
+        name: "Adriatic Coastal Ride",
+        description: "Vienna to Dubrovnik along the Croatian coast",
+        start: LOCATIONS.vienna,
+        end: LOCATIONS.dubrovnik,
+        distance: 1120,
+        duration: "14h 45m",
+        ferries: 0,
+        via: "Ljubljana, Rijeka, Split",
+        dates: { start: "2024-05-10", end: "2024-05-16" },
+        segments: [
+          {
+            day: 1, title: "Vienna to Ljubljana", distance: 384,
+            start: LOCATIONS.vienna, end: LOCATIONS.ljubljana,
+            waypoints: [],
+            startTime: "07:30", endTime: "13:00",
+            notes: "Scenic drive through Semmering Pass",
+            isScenic: true
+          },
+          {
+            day: 2, title: "Ljubljana to Split", distance: 530,
+            start: LOCATIONS.ljubljana, end: LOCATIONS.split,
+            waypoints: [LOCATIONS.rijeka, LOCATIONS.zadar],
+            startTime: "07:00", endTime: "18:00",
+            notes: "Stunning coastal highway, multiple photo stops recommended",
+            isScenic: true
+          },
+          {
+            day: 3, title: "Split to Dubrovnik", distance: 230,
+            start: LOCATIONS.split, end: LOCATIONS.dubrovnik,
+            waypoints: [],
+            startTime: "09:00", endTime: "14:30",
+            notes: "Brief Bosnia-Herzegovina border crossing at Neum",
+            isScenic: true
+          }
+        ],
+        pois: [
+          { name: "Plitvice Lakes National Park", description: "UNESCO World Heritage site with 16 terraced lakes and waterfalls", type: "viewpoint", coords: { lat: 44.8654, lng: 15.5820 }, rating: 4.9, reviews: 52300 },
+          { name: "Trsat Castle - Rijeka", description: "13th-century hilltop castle with panoramic Kvarner Bay views", type: "viewpoint", coords: { lat: 45.3335, lng: 14.4357 }, rating: 4.5, reviews: 4870 },
+          { name: "Diocletian's Palace - Split", description: "Roman emperor's 4th-century palace, now a living old town", type: "viewpoint", coords: { lat: 43.5081, lng: 16.4402 }, rating: 4.8, reviews: 38100 },
+          { name: "Sea Organ - Zadar", description: "Architectural sound installation played by the Adriatic waves", type: "viewpoint", coords: { lat: 44.1163, lng: 15.2214 }, rating: 4.7, reviews: 18900 }
+        ],
+        accommodations: [
+          { name: "Old Town Rooms - Ljubljana", description: "Central location, garage available", price: 72, coords: LOCATIONS.ljubljana, rating: 4.6, reviews: 189, features: ["Locked garage"] },
+          { name: "Coastal Riders Hostel - Split", description: "Budget-friendly, biker community", price: 38, coords: LOCATIONS.split, rating: 4.2, reviews: 256, features: ["Tool station"] },
+          { name: "Stari Grad Hotel - Dubrovnik", description: "Old town views, secure underground parking", price: 145, coords: LOCATIONS.dubrovnik, rating: 4.8, reviews: 412, features: ["Underground parking"] }
+        ],
+        ferryData: []
+      },
+      iberian: {
+        name: "Iberian Grand Loop",
+        description: "Barcelona to Barcelona via southern Spain and Portugal",
+        start: LOCATIONS.barcelona,
+        end: LOCATIONS.barcelona,
+        distance: 3280,
+        duration: "38h 15m",
+        ferries: 0,
+        via: "Valencia, Granada, Seville, Lisbon, Porto, Madrid",
+        dates: { start: "2024-09-01", end: "2024-09-14" },
+        segments: [
+          {
+            day: 1, title: "Barcelona to Valencia", distance: 350,
+            start: LOCATIONS.barcelona, end: LOCATIONS.valencia,
+            waypoints: [],
+            startTime: "08:00", endTime: "13:30",
+            notes: "Mediterranean coastal motorway, fast riding",
+            isScenic: false
+          },
+          {
+            day: 2, title: "Valencia to Granada", distance: 490,
+            start: LOCATIONS.valencia, end: LOCATIONS.granada,
+            waypoints: [],
+            startTime: "07:30", endTime: "15:00",
+            notes: "Inland route through La Mancha; arid landscapes",
+            isScenic: false
+          },
+          {
+            day: 3, title: "Granada to Seville", distance: 256,
+            start: LOCATIONS.granada, end: LOCATIONS.seville,
+            waypoints: [],
+            startTime: "09:00", endTime: "13:00",
+            notes: "Short day, enjoy Alhambra in the morning before departure",
+            isScenic: true
+          },
+          {
+            day: 4, title: "Seville to Lisbon", distance: 460,
+            start: LOCATIONS.seville, end: LOCATIONS.lisbon,
+            waypoints: [],
+            startTime: "07:00", endTime: "14:30",
+            notes: "Cross into Portugal via Algarve backroads",
+            isScenic: true
+          },
+          {
+            day: 5, title: "Lisbon to Porto", distance: 315,
+            start: LOCATIONS.lisbon, end: LOCATIONS.porto,
+            waypoints: [],
+            startTime: "09:00", endTime: "14:00",
+            notes: "Atlantic coast road through Nazare and Coimbra",
+            isScenic: true
+          },
+          {
+            day: 6, title: "Porto to Madrid", distance: 600,
+            start: LOCATIONS.porto, end: LOCATIONS.madrid,
+            waypoints: [],
+            startTime: "06:30", endTime: "16:00",
+            notes: "Long day, cross the Meseta Central plateau",
+            isScenic: false
+          },
+          {
+            day: 7, title: "Madrid to Barcelona", distance: 620,
+            start: LOCATIONS.madrid, end: LOCATIONS.barcelona,
+            waypoints: [],
+            startTime: "07:00", endTime: "16:30",
+            notes: "Motorway sprint back to Barcelona, loop complete",
+            isScenic: false
+          }
+        ],
+        pois: [
+          { name: "Alhambra Palace", description: "Moorish palace complex and UNESCO World Heritage Site", type: "viewpoint", coords: { lat: 37.1761, lng: -3.5881 }, rating: 4.9, reviews: 124500 },
+          { name: "Plaza de Espana - Seville", description: "Stunning 1929 semicircular plaza with tiled alcoves", type: "viewpoint", coords: { lat: 37.3772, lng: -5.9869 }, rating: 4.8, reviews: 89200 },
+          { name: "Belem Tower - Lisbon", description: "16th-century Manueline fortress on the Tagus riverbank", type: "viewpoint", coords: { lat: 38.6916, lng: -9.2160 }, rating: 4.6, reviews: 54200 },
+          { name: "Livraria Lello - Porto", description: "Neo-Gothic bookshop from 1906, inspiration for Harry Potter", type: "viewpoint", coords: { lat: 41.1468, lng: -8.6150 }, rating: 4.4, reviews: 36700 },
+          { name: "Puerta del Sol - Madrid", description: "Heart of Madrid, kilometre zero marker for Spain's road network", type: "viewpoint", coords: { lat: 40.4169, lng: -3.7035 }, rating: 4.5, reviews: 42100 }
+        ],
+        accommodations: [
+          { name: "Parador de Granada", description: "Historic hotel inside the Alhambra grounds", price: 180, coords: LOCATIONS.granada, rating: 4.9, reviews: 840, features: ["Courtyard parking"] },
+          { name: "Alfama Guesthouse - Lisbon", description: "Charming old-town stay", price: 85, coords: LOCATIONS.lisbon, rating: 4.4, reviews: 312, features: ["Free breakfast"] },
+          { name: "Ribeira Apartments - Porto", description: "Self-catering riverside flat", price: 65, coords: LOCATIONS.porto, rating: 4.3, reviews: 198, features: ["Street parking"] }
+        ],
+        ferryData: []
+      },
+      scottish: {
+        name: "Scottish Highlands",
+        description: "Edinburgh loop through the Highlands and Isle of Skye",
+        start: LOCATIONS.edinburgh,
+        end: LOCATIONS.edinburgh,
+        distance: 920,
+        duration: "15h 30m",
+        ferries: 1,
+        via: "Glasgow, Fort William, Skye, Inverness",
+        dates: { start: "2024-07-05", end: "2024-07-10" },
+        segments: [
+          {
+            day: 1, title: "Edinburgh to Fort William", distance: 210,
+            start: LOCATIONS.edinburgh, end: LOCATIONS.fortWilliam,
+            waypoints: [LOCATIONS.glasgow, LOCATIONS.glencoe],
+            startTime: "08:00", endTime: "15:00",
+            notes: "Glencoe is one of Scotland's most dramatic valleys, stop for photos",
+            isScenic: true
+          },
+          {
+            day: 2, title: "Fort William to Isle of Skye", distance: 110,
+            start: LOCATIONS.fortWilliam, end: LOCATIONS.skye,
+            waypoints: [],
+            startTime: "09:00", endTime: "13:00",
+            notes: "Cross the Skye Bridge, single-track roads on the island",
+            isScenic: true
+          },
+          {
+            day: 3, title: "Isle of Skye to Inverness", distance: 180,
+            start: LOCATIONS.skye, end: LOCATIONS.inverness,
+            waypoints: [],
+            startTime: "08:30", endTime: "14:00",
+            notes: "Optional ferry from Armadale to Mallaig, scenic coastal route",
+            isScenic: true
+          },
+          {
+            day: 4, title: "Inverness to Edinburgh", distance: 250,
+            start: LOCATIONS.inverness, end: LOCATIONS.edinburgh,
+            waypoints: [],
+            startTime: "08:00", endTime: "14:30",
+            notes: "Cairngorms National Park route, watch for deer on the road",
+            isScenic: true
+          }
+        ],
+        pois: [
+          { name: "Glencoe Valley", description: "Dramatic mountain valley, filming location for Skyfall and Harry Potter", type: "viewpoint", coords: { lat: 56.6823, lng: -5.0244 }, rating: 4.9, reviews: 23100 },
+          { name: "Old Man of Storr", description: "Iconic basalt rock pinnacle on Skye, 45 min hike from car park", type: "viewpoint", coords: { lat: 57.5074, lng: -6.1838 }, rating: 4.9, reviews: 18700 },
+          { name: "Eilean Donan Castle", description: "13th-century island castle at the junction of three sea lochs", type: "viewpoint", coords: { lat: 57.2740, lng: -5.5160 }, rating: 4.7, reviews: 31400 },
+          { name: "Loch Ness - Urquhart Castle", description: "Ruined castle on the shore of Loch Ness with exhibition centre", type: "viewpoint", coords: { lat: 57.3240, lng: -4.4428 }, rating: 4.6, reviews: 14200 }
+        ],
+        accommodations: [
+          { name: "Ben Nevis Inn - Fort William", description: "Cozy bunkhouse at the foot of Britain's highest peak", price: 55, coords: LOCATIONS.fortWilliam, rating: 4.4, reviews: 312, features: ["Drying room"] },
+          { name: "Skye Camping Pods", description: "Waterfront glamping pods with stunning views", price: 75, coords: LOCATIONS.skye, rating: 4.6, reviews: 198, features: ["Bike wash station"] },
+          { name: "Inverness B&B", description: "Traditional Scottish breakfast included", price: 68, coords: LOCATIONS.inverness, rating: 4.5, reviews: 267, features: ["Free breakfast"] }
+        ],
+        ferryData: [
+          { name: "Armadale - Mallaig Ferry", operator: "CalMac Ferries", duration: "30 min", price: 6.65, schedule: "Summer (Mar-Oct): 6-8 daily, first 08:00, last 19:15. Winter: 3-4 daily.", start: LOCATIONS.skye, end: LOCATIONS.fortWilliam,
+            timetable: [
+              { depart: "08:00", arrive: "08:30", vessel: "MV Coruisk" },
+              { depart: "09:45", arrive: "10:15", vessel: "MV Coruisk" },
+              { depart: "11:15", arrive: "11:45", vessel: "MV Coruisk" },
+              { depart: "13:15", arrive: "13:45", vessel: "MV Coruisk" },
+              { depart: "15:00", arrive: "15:30", vessel: "MV Coruisk" },
+              { depart: "16:45", arrive: "17:15", vessel: "MV Coruisk" },
+              { depart: "18:15", arrive: "18:45", vessel: "MV Coruisk" },
+              { depart: "19:15", arrive: "19:45", vessel: "MV Coruisk" }
+            ],
+            fares: { motorcycle: "£6.65 single / £13.30 return", adult: "£4.00 single / £8.00 return", child: "£2.00 single / £4.00 return", bicycle: "Free" },
+            notes: "Book online at calmac.co.uk. Check-in 20 min before departure for vehicles. Blue Badge concession available."
+          }
+        ]
+      },
+      greek: {
+        name: "Greek Island Hop",
+        description: "Athens to Santorini via the Cyclades by ferry",
+        start: LOCATIONS.athens,
+        end: LOCATIONS.santorini,
+        distance: 340,
+        duration: "9h 0m",
+        ferries: 3,
+        via: "Piraeus, Mykonos, Paros, Naxos",
+        dates: { start: "2024-06-20", end: "2024-06-27" },
+        segments: [
+          {
+            day: 1, title: "Athens to Mykonos", distance: 150,
+            start: LOCATIONS.athens, end: LOCATIONS.mykonos,
+            waypoints: [LOCATIONS.piraeus],
+            startTime: "06:00", endTime: "11:30",
+            notes: "High-speed ferry from Piraeus port, book ahead in summer",
+            isScenic: false,
+            isFerry: true
+          },
+          {
+            day: 2, title: "Mykonos to Naxos", distance: 65,
+            start: LOCATIONS.mykonos, end: LOCATIONS.naxos,
+            waypoints: [LOCATIONS.paros],
+            startTime: "10:00", endTime: "13:30",
+            notes: "Short hop via Paros, great for a lunch stop on the harbor",
+            isScenic: true,
+            isFerry: true
+          },
+          {
+            day: 3, title: "Naxos to Santorini", distance: 125,
+            start: LOCATIONS.naxos, end: LOCATIONS.santorini,
+            waypoints: [],
+            startTime: "09:00", endTime: "12:00",
+            notes: "Arrive early to ride the caldera road before sunset crowds",
+            isScenic: true,
+            isFerry: true
+          }
+        ],
+        pois: [
+          { name: "Mykonos Windmills", description: "Row of 16th-century windmills overlooking Little Venice", type: "viewpoint", coords: { lat: 37.4456, lng: 25.3254 }, rating: 4.7, reviews: 42100 },
+          { name: "Portara - Temple of Apollo", description: "Massive 6th-century BC marble gateway on the Naxos islet", type: "viewpoint", coords: { lat: 37.1106, lng: 25.3726 }, rating: 4.8, reviews: 21000 },
+          { name: "Oia Sunset Point", description: "World-famous caldera sunset views from the village of Oia", type: "viewpoint", coords: { lat: 36.4618, lng: 25.3753 }, rating: 4.9, reviews: 89000 },
+          { name: "Parikia Old Town - Paros", description: "Venetian kastro and whitewashed lanes in the island capital", type: "viewpoint", coords: { lat: 37.0866, lng: 25.1483 }, rating: 4.6, reviews: 8400 }
+        ],
+        accommodations: [
+          { name: "Little Venice Studios - Mykonos", description: "Whitewashed rooms steps from the waterfront", price: 130, coords: LOCATIONS.mykonos, rating: 4.5, reviews: 312, features: ["Scooter parking"] },
+          { name: "Old Market Hotel - Naxos", description: "Central location in the kastro district", price: 75, coords: LOCATIONS.naxos, rating: 4.4, reviews: 198, features: ["Rooftop terrace"] },
+          { name: "Caldera View Suites - Santorini", description: "Cliffside cave hotel with infinity pool", price: 220, coords: LOCATIONS.santorini, rating: 4.9, reviews: 567, features: ["Infinity pool"] }
+        ],
+        ferryData: [
+          { name: "Piraeus - Mykonos", operator: "SeaJets / Blue Star Ferries", duration: "2h 40m - 5h 45m", price: 53, schedule: "Up to 9 daily (summer). High-speed from 2h40m, conventional 5h45m.", start: LOCATIONS.piraeus, end: LOCATIONS.mykonos,
+            timetable: [
+              { depart: "07:00", arrive: "09:40", vessel: "WorldChampion Jet (SeaJets)", type: "High-speed" },
+              { depart: "07:25", arrive: "12:45", vessel: "Blue Star Delos", type: "Conventional" },
+              { depart: "10:40", arrive: "13:20", vessel: "Andros Jet (SeaJets)", type: "High-speed" },
+              { depart: "14:00", arrive: "16:40", vessel: "Tera Jet (SeaJets)", type: "High-speed" },
+              { depart: "17:30", arrive: "23:15", vessel: "Blue Star Paros", type: "Conventional" }
+            ],
+            fares: { economy: "from €53", business: "from €73", vip: "from €89", motorcycle: "from €38", car: "from €95" },
+            notes: "Book via Ferryhopper or operator sites. High-speed keeps you indoors; conventional has open decks. Arrive at Piraeus Gate E7 45 min before departure."
+          },
+          { name: "Mykonos - Paros - Naxos", operator: "SeaJets / Golden Star Ferries", duration: "35m - 1h 30m per hop", price: 25, schedule: "Up to 11 daily Mykonos-Paros (summer), 6+ daily Paros-Naxos.", start: LOCATIONS.mykonos, end: LOCATIONS.naxos,
+            timetable: [
+              { depart: "09:15", arrive: "09:50", vessel: "Superjet (SeaJets)", type: "Mykonos - Paros" },
+              { depart: "10:30", arrive: "11:15", vessel: "Superjet (SeaJets)", type: "Mykonos - Paros" },
+              { depart: "12:00", arrive: "12:35", vessel: "Paros Jet (Golden Star)", type: "Paros - Naxos" },
+              { depart: "14:30", arrive: "15:10", vessel: "Tera Jet (SeaJets)", type: "Paros - Naxos" },
+              { depart: "16:45", arrive: "17:25", vessel: "Blue Star Naxos", type: "Paros - Naxos" }
+            ],
+            fares: { economy: "from €25", business: "from €36", motorcycle: "from €22" },
+            notes: "Short hops, no cabin needed. Paros is worth a 2-3 hour lunch stop at Parikia harbor."
+          },
+          { name: "Naxos - Santorini", operator: "Blue Star Ferries / SeaJets", duration: "1h 45m - 3h 30m", price: 35, schedule: "2-5 daily (summer). High-speed ~1h45m, conventional ~3h30m.", start: LOCATIONS.naxos, end: LOCATIONS.santorini,
+            timetable: [
+              { depart: "08:50", arrive: "10:35", vessel: "Andros Jet (SeaJets)", type: "High-speed" },
+              { depart: "11:30", arrive: "13:15", vessel: "WorldChampion Jet (SeaJets)", type: "High-speed" },
+              { depart: "14:00", arrive: "17:30", vessel: "Blue Star Paros", type: "Conventional" },
+              { depart: "16:20", arrive: "18:05", vessel: "Tera Jet (SeaJets)", type: "High-speed" }
+            ],
+            fares: { economy: "from €35", business: "from €52", motorcycle: "from €28", car: "from €72" },
+            notes: "Arrive Santorini at Athinios port, 15 min ride to Fira. Take the early ferry to ride the caldera road before crowds."
+          }
+        ]
+      }
+    };
+
+    // ===== LEAFLET MAP =====
+    window.map = L.map('map', { center: [49.0, 10.0], zoom: 5, zoomControl: false });
+    const map = window.map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    const routeLayer = L.layerGroup().addTo(map);
+    const markerLayer = L.layerGroup().addTo(map);
+
+    function createPOIIcon() {
+      return L.divIcon({
+        className: 'poi-marker',
+        html: '<div style="width:24px;height:24px;background:#EF4444;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,.3)"><svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;fill:white" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 24]
+      });
+    }
+
+    function createStartIcon() {
+      return L.divIcon({
+        className: 'start-marker',
+        html: '<div style="width:28px;height:28px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3);border:3px solid white"><svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;fill:white" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28]
+      });
+    }
+
+    function createEndIcon() {
+      return L.divIcon({
+        className: 'end-marker',
+        html: '<div style="width:28px;height:28px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3);border:3px solid white"><svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;fill:white" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 21l1.65-3.8a9 9 0 1112.71 0L19 21l-7-3-7 3z" clip-rule="evenodd"/><circle cx="12" cy="10" r="3" fill="white"/></svg></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28]
+      });
+    }
+
+    function starsHTML(rating) {
+      return Array(5).fill(0).map((_, i) =>
+        `<svg xmlns="http://www.w3.org/2000/svg" style="width:12px;height:12px;display:inline" viewBox="0 0 20 20"><path class="${i < Math.round(rating) ? 'star-filled' : 'star-empty'}" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`
+      ).join('');
+    }
+
+    function poiIconColor(type) {
+      const colors = { rest: '#fecaca', shop: '#bfdbfe', viewpoint: '#bbf7d0', meeting: '#e9d5ff', fuel: '#fef08a' };
+      return colors[type] || '#e5e7eb';
+    }
+
+    function poiSVG(type) {
+      const svgs = {
+        rest: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#ef4444"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>',
+        shop: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#3b82f6"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"/></svg>',
+        viewpoint: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="#22c55e"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/></svg>'
+      };
+      return svgs[type] || svgs.rest;
+    }
+
+    // ===== RENDER ROUTE ON MAP =====
+    function renderRoute(routeKey) {
+      routeLayer.clearLayers();
+      markerLayer.clearLayers();
+      const route = ROUTES[routeKey];
+      if (!route) return;
+
+      // Start & end markers
+      L.marker([route.start.lat, route.start.lng], { icon: createStartIcon() })
+        .bindPopup(`<b>Start:</b> ${route.start.name}`)
+        .addTo(markerLayer);
+      L.marker([route.end.lat, route.end.lng], { icon: createEndIcon() })
+        .bindPopup(`<b>End:</b> ${route.end.name}`)
+        .addTo(markerLayer);
+
+      // Segments as polylines
+      const allPoints = [];
+      route.segments.forEach(seg => {
+        const pts = [
+          [seg.start.lat, seg.start.lng],
+          ...seg.waypoints.map(wp => [wp.lat, wp.lng]),
+          [seg.end.lat, seg.end.lng]
+        ];
+        allPoints.push(...pts);
+        const color = seg.isFerry ? '#0EA5E9' : seg.isScenic ? '#22C55E' : '#FF5722';
+        const dashArray = seg.isFerry ? '10, 10' : undefined;
+        L.polyline(pts, { color, weight: 5, opacity: 0.8, dashArray }).addTo(routeLayer);
+
+        // Waypoint markers
+        seg.waypoints.forEach(wp => {
+          L.marker([wp.lat, wp.lng], {
+            icon: L.divIcon({
+              className: 'wp-marker',
+              html: `<div style="width:20px;height:20px;background:${seg.isScenic ? '#22C55E' : 'var(--primary)'};border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)"><div style="width:8px;height:8px;background:white;border-radius:50%"></div></div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            })
+          }).bindPopup(`<b>Waypoint:</b> ${wp.name}`).addTo(markerLayer);
+        });
+      });
+
+      // POI markers — click to zoom in
+      window._poiMarkers = {};
+      route.pois.forEach((poi, idx) => {
+        var marker = L.marker([poi.coords.lat, poi.coords.lng], { icon: createPOIIcon() })
+          .bindPopup(`<div style="min-width:180px"><strong>${poi.name}</strong><p style="margin:4px 0;font-size:12px">${poi.description}</p><div style="display:flex;align-items:center;gap:2px;margin-top:4px">${starsHTML(poi.rating)}<span style="font-size:11px;margin-left:4px">(${poi.reviews.toLocaleString()} reviews)</span></div></div>`)
+          .addTo(markerLayer);
+        marker.on('click', function() {
+          map.flyTo([poi.coords.lat, poi.coords.lng], 14, { duration: 1.2 });
+        });
+        window._poiMarkers[idx] = { marker: marker, coords: poi.coords };
+      });
+
+      // Fit bounds
+      if (allPoints.length > 0) {
+        map.fitBounds(allPoints, { padding: [40, 40] });
+      }
+    }
+
+    // ===== RENDER ROUTE DETAILS PANEL =====
+    function renderPanel(routeKey) {
+      const route = ROUTES[routeKey];
+      if (!route) return;
+
+      document.getElementById('rp-title').textContent = `${route.start.name} to ${route.end.name}`;
+      document.getElementById('rp-via').textContent = `Via ${route.via}`;
+      document.getElementById('rp-distance').textContent = `${route.distance.toLocaleString()} km`;
+      document.getElementById('rp-duration').textContent = route.duration;
+      document.getElementById('rp-ferries').textContent = route.ferries;
+
+      // ===== COST ESTIMATION =====
+      // Fuel: avg motorcycle 5L/100km, avg European fuel €1.70/L
+      var fuelCost = Math.round(route.distance * 0.05 * 1.70);
+      // Ferries: sum base prices
+      var ferryCost = 0;
+      if (route.ferryData && route.ferryData.length > 0) {
+        route.ferryData.forEach(function(f) { ferryCost += f.price; });
+      }
+      // Accommodation: sum cheapest per night (segments - 1 nights, or use actual data)
+      var accCost = 0;
+      var nights = Math.max(route.segments.length - 1, 1);
+      if (route.accommodations && route.accommodations.length > 0) {
+        // Use average of listed accommodations * nights
+        var avgAcc = Math.round(route.accommodations.reduce(function(s, a) { return s + a.price; }, 0) / route.accommodations.length);
+        accCost = avgAcc * nights;
+      }
+      // Food: rough €30/day for a rider
+      var foodCost = route.segments.length * 30;
+      var totalCost = fuelCost + ferryCost + accCost + foodCost;
+
+      document.getElementById('rp-cost').textContent = '€' + totalCost.toLocaleString();
+
+      // Cost breakdown bar
+      var breakdownEl = document.getElementById('cost-breakdown');
+      var total = fuelCost + ferryCost + accCost + foodCost;
+      var pFuel = Math.round((fuelCost / total) * 100);
+      var pFerry = Math.round((ferryCost / total) * 100);
+      var pAcc = Math.round((accCost / total) * 100);
+      var pFood = 100 - pFuel - pFerry - pAcc;
+
+      var items = [
+        { label: 'Fuel', amount: fuelCost, pct: pFuel, color: '#FF5722' },
+        { label: 'Ferries', amount: ferryCost, pct: pFerry, color: '#0EA5E9' },
+        { label: 'Accommodation', amount: accCost, pct: pAcc, color: '#8B5CF6' },
+        { label: 'Food (~€30/day)', amount: foodCost, pct: pFood, color: '#22C55E' }
+      ];
+
+      var barHTML = '<div class="cost-bar-wrap">';
+      var legendHTML = '<div class="cost-legend">';
+      items.forEach(function(item) {
+        if (item.amount > 0) {
+          barHTML += '<div class="cost-bar-seg" style="width:' + Math.max(item.pct, 2) + '%;background:' + item.color + '"></div>';
+          legendHTML += '<div class="cost-legend-item"><div class="cost-legend-dot" style="background:' + item.color + '"></div>' + item.label + ' <span class="cost-legend-amount">€' + item.amount + '</span></div>';
+        }
+      });
+      barHTML += '</div>';
+      legendHTML += '</div>';
+
+      breakdownEl.innerHTML = '<div class="cost-breakdown"><div class="cost-breakdown-title">Estimated Trip Cost Breakdown</div>' + barHTML + legendHTML + '<div style="font-size:.5625rem;color:#9ca3af;margin-top:6px">Based on avg motorcycle 5L/100km at €1.70/L. Accommodation averaged from listed options. Ferries at economy rate.</div></div>';
+
+      // Segments
+      const segContainer = document.getElementById('segments-container');
+      segContainer.innerHTML = '<div class="segments-title">Route Segments</div>';
+      route.segments.forEach(seg => {
+        let wpHTML = '';
+        seg.waypoints.forEach(wp => {
+          wpHTML += `
+            <div class="timeline-line"></div>
+            <div class="timeline-point">
+              <div class="timeline-dot ${seg.isScenic ? 'scenic' : 'primary'}"><div class="inner"></div></div>
+              <div><div class="timeline-name">${wp.name}</div><div class="timeline-sub">Waypoint</div></div>
+            </div>`;
+        });
+
+        const noteHTML = seg.notes ? `
+          <div class="segment-note">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+            <span>${seg.notes}</span>
+          </div>` : '';
+
+        segContainer.innerHTML += `
+          <div class="segment-card">
+            <div class="segment-header">
+              <div class="title">Day ${seg.day}: ${seg.title}</div>
+              <div class="dist">${seg.distance.toLocaleString()} km</div>
+            </div>
+            <div class="segment-body">
+              <div class="timeline-point">
+                <div class="timeline-dot primary"><div class="inner"></div></div>
+                <div><div class="timeline-name">${seg.start.name}</div><div class="timeline-sub">Start at ${seg.startTime}</div></div>
+              </div>
+              ${wpHTML}
+              <div class="timeline-line"></div>
+              <div class="timeline-point">
+                <div class="timeline-dot primary"><div class="inner"></div></div>
+                <div><div class="timeline-name">${seg.end.name}</div><div class="timeline-sub">Arrive by ${seg.endTime}</div></div>
+              </div>
+              ${noteHTML}
+            </div>
+          </div>`;
+      });
+
+      // POIs
+      const poiContainer = document.getElementById('poi-container');
+      poiContainer.innerHTML = '<div class="section-title">Points of Interest</div>';
+      route.pois.forEach((poi, idx) => {
+        poiContainer.innerHTML += `
+          <div class="poi-card" data-poi-idx="${idx}" style="cursor:pointer" title="Click to zoom to ${poi.name}">
+            <div class="poi-icon" style="background:${poiIconColor(poi.type)}">${poiSVG(poi.type)}</div>
+            <div>
+              <div class="poi-name">${poi.name}</div>
+              <div class="poi-desc">${poi.description}</div>
+              <div class="poi-rating">${starsHTML(poi.rating)}<span class="count">(${poi.reviews.toLocaleString()} reviews)</span></div>
+            </div>
+          </div>`;
+      });
+      // Attach click handlers to POI cards
+      poiContainer.querySelectorAll('.poi-card[data-poi-idx]').forEach(function(card) {
+        card.addEventListener('click', function() {
+          var idx = parseInt(card.getAttribute('data-poi-idx'));
+          var poiRef = window._poiMarkers && window._poiMarkers[idx];
+          if (poiRef) {
+            map.flyTo([poiRef.coords.lat, poiRef.coords.lng], 14, { duration: 1.2 });
+            poiRef.marker.openPopup();
+          }
+        });
+      });
+
+      // Accommodations
+      const accContainer = document.getElementById('acc-container');
+      accContainer.innerHTML = '<div class="section-title">Accommodation Options</div>';
+      route.accommodations.forEach(acc => {
+        accContainer.innerHTML += `
+          <div class="acc-card">
+            <div class="acc-top">
+              <div>
+                <div class="acc-name">${acc.name}</div>
+                <div class="acc-desc">${acc.description}</div>
+              </div>
+              <div class="acc-price">&euro;${acc.price}</div>
+            </div>
+            <div class="acc-bottom">
+              <div class="acc-rating">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                <span>${acc.rating.toFixed(1)} (${acc.reviews})</span>
+              </div>
+              ${acc.features[0] ? `<div class="acc-feature"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg><span>${acc.features[0]}</span></div>` : ''}
+            </div>
+          </div>`;
+      });
+
+      // Ferry section
+      var ferryContainer = document.getElementById('ferry-container');
+      ferryContainer.innerHTML = '<div class="section-title">Ferry Crossings</div>';
+      if (route.ferryData && route.ferryData.length > 0) {
+        route.ferryData.forEach(function(ferry) {
+          var timetableHTML = '';
+          if (ferry.timetable && ferry.timetable.length > 0) {
+            timetableHTML = '<div style="margin-top:8px"><div style="font-size:.6875rem;font-weight:500;color:var(--primary);margin-bottom:4px">Sample Timetable (summer)</div>' +
+              '<table style="width:100%;font-size:.6875rem;border-collapse:collapse">' +
+              '<tr style="background:var(--light-bg)"><th style="text-align:left;padding:3px 6px">Depart</th><th style="text-align:left;padding:3px 6px">Arrive</th><th style="text-align:left;padding:3px 6px">Vessel</th></tr>';
+            ferry.timetable.forEach(function(t) {
+              var vesselLabel = t.type ? t.vessel + ' <span style="color:var(--ferry-blue)">(' + t.type + ')</span>' : t.vessel;
+              timetableHTML += '<tr style="border-bottom:1px solid var(--border)"><td style="padding:3px 6px">' + t.depart + '</td><td style="padding:3px 6px">' + t.arrive + '</td><td style="padding:3px 6px">' + vesselLabel + '</td></tr>';
+            });
+            timetableHTML += '</table></div>';
+          }
+
+          var faresHTML = '';
+          if (ferry.fares) {
+            faresHTML = '<div style="margin-top:8px"><div style="font-size:.6875rem;font-weight:500;color:var(--primary);margin-bottom:4px">Fares</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+            Object.keys(ferry.fares).forEach(function(k) {
+              var label = k.charAt(0).toUpperCase() + k.slice(1);
+              faresHTML += '<span style="font-size:.625rem;background:var(--light-bg);padding:2px 6px;border-radius:4px"><b>' + label + ':</b> ' + ferry.fares[k] + '</span>';
+            });
+            faresHTML += '</div></div>';
+          }
+
+          var notesHTML = ferry.notes ? '<div style="margin-top:6px;font-size:.625rem;color:#6b7280;font-style:italic">' + ferry.notes + '</div>' : '';
+
+          ferryContainer.innerHTML +=
+            '<div class="ferry-card">' +
+              '<div class="fc-name">' + ferry.name + '</div>' +
+              '<div class="fc-operator">' + ferry.operator + '</div>' +
+              '<div class="fc-details">' +
+                '<span>Crossing: ' + ferry.duration + '</span>' +
+                '<span class="fc-price">from &euro;' + ferry.price + '</span>' +
+              '</div>' +
+              '<div class="fc-schedule">' + ferry.schedule + '</div>' +
+              timetableHTML +
+              faresHTML +
+              notesHTML +
+            '</div>';
+        });
+      } else {
+        ferryContainer.innerHTML +=
+          '<div class="ferry-box">' +
+            '<p>No ferry crossings required for this route.</p>' +
+            '<p style="margin-top:8px;">Need a different route with ferry options?</p>' +
+            '<button class="btn-ferry" onclick="loadRoute(\'greek\')">Explore Ferry Routes</button>' +
+          '</div>';
+      }
+    }
+
+    // ===== LOAD ROUTE =====
+    function loadRoute(routeKey) {
+      renderRoute(routeKey);
+      renderPanel(routeKey);
+
+      var route = ROUTES[routeKey];
+      if (route) {
+        // Update form fields to match selected route
+        document.querySelector('.form-input[placeholder*="starting"]').value = route.start.name;
+        document.querySelector('.form-input[placeholder*="destination"]').value = route.end.name;
+        var dateInputs = document.querySelectorAll('.date-input');
+        if (route.dates) {
+          dateInputs[0].value = route.dates.start || '';
+          dateInputs[1].value = route.dates.end || '';
+        }
+      }
+
+      // Highlight selected saved route
+      document.querySelectorAll('.saved-route').forEach(function(el) {
+        el.classList.remove('selected');
+        el.style.background = '';
+      });
+      var selected = document.querySelector('[data-route="' + routeKey + '"]');
+      if (selected) selected.style.background = 'hsl(214, 80%, 93%)';
+    }
+
+    // ===== MAP STYLE TOGGLE =====
+    document.querySelectorAll('.map-style-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.map-style-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // ===== POPULATE SAVED ROUTES LIST =====
+    var routeKeys = Object.keys(ROUTES);
+    var listContainer = document.getElementById('saved-routes-list');
+    routeKeys.forEach(function(key) {
+      var r = ROUTES[key];
+      var days = Math.max(r.segments.length, Math.ceil(parseInt(r.duration) / 24));
+      var dateStr = '';
+      if (r.dates && r.dates.start) {
+        var d = new Date(r.dates.start);
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        dateStr = months[d.getMonth()] + ' ' + d.getFullYear();
+      }
+      var card = document.createElement('div');
+      card.className = 'saved-route';
+      card.setAttribute('data-route', key);
+      card.onclick = function() { loadRoute(key); };
+      card.innerHTML =
+        '<h4>' + r.name + '</h4>' +
+        '<div class="desc">' + r.description + '</div>' +
+        '<div class="meta">' +
+          '<span class="dist">' + r.distance.toLocaleString() + ' km &bull; ' + r.segments.length + ' days</span>' +
+          '<span class="date">' + dateStr + '</span>' +
+        '</div>';
+      listContainer.appendChild(card);
+    });
+
+    // ===== ADD WAYPOINT BUTTON =====
+    var waypointCount = 0;
+    document.getElementById('btn-add-waypoint').addEventListener('click', function() {
+      waypointCount++;
+      var container = document.getElementById('waypoint-container');
+      var row = document.createElement('div');
+      row.className = 'waypoint-row form-group';
+      row.innerHTML =
+        '<div class="form-input-wrap" style="flex:1">' +
+          '<input class="form-input wp-input" type="text" placeholder="Enter waypoint city" />' +
+          '<svg class="form-input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>' +
+        '</div>' +
+        '<button class="wp-remove" title="Remove waypoint">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>' +
+        '</button>';
+      container.appendChild(row);
+      row.querySelector('.wp-remove').addEventListener('click', function() { row.remove(); });
+    });
+
+    // ===== GEOCODE HELPER (Nominatim) =====
+    async function geocode(placeName) {
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(placeName);
+      var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      var data = await res.json();
+      if (data && data.length > 0) {
+        return { name: data[0].display_name.split(',')[0], lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+      return null;
+    }
+
+    // ===== OSRM ROUTE HELPER =====
+    async function fetchOSRMRoute(points) {
+      // points = [{lat,lng}, ...] — at least 2
+      var coords = points.map(function(p) { return p.lng + ',' + p.lat; }).join(';');
+      var url = 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson';
+      var res = await fetch(url);
+      var data = await res.json();
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        return data.routes[0];
+      }
+      return null;
+    }
+
+    // ===== RENDER CUSTOM ROUTE =====
+    function renderCustomRoute(startLoc, endLoc, waypointLocs, osrmRoute) {
+      routeLayer.clearLayers();
+      markerLayer.clearLayers();
+      window._poiMarkers = {};
+
+      // Draw the OSRM geometry
+      var geojsonCoords = osrmRoute.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+      L.polyline(geojsonCoords, { color: '#FF5722', weight: 5, opacity: 0.8 }).addTo(routeLayer);
+
+      // Start marker
+      L.marker([startLoc.lat, startLoc.lng], { icon: createStartIcon() })
+        .bindPopup('<b>Start:</b> ' + startLoc.name).addTo(markerLayer);
+      // End marker
+      L.marker([endLoc.lat, endLoc.lng], { icon: createEndIcon() })
+        .bindPopup('<b>End:</b> ' + endLoc.name).addTo(markerLayer);
+      // Waypoint markers
+      waypointLocs.forEach(function(wp) {
+        L.marker([wp.lat, wp.lng], {
+          icon: L.divIcon({
+            className: 'wp-marker',
+            html: '<div style="width:20px;height:20px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)"><div style="width:8px;height:8px;background:white;border-radius:50%"></div></div>',
+            iconSize: [20, 20], iconAnchor: [10, 10]
+          })
+        }).bindPopup('<b>Waypoint:</b> ' + wp.name).addTo(markerLayer);
+      });
+
+      // Fit bounds
+      map.fitBounds(geojsonCoords, { padding: [40, 40] });
+    }
+
+    // ===== RENDER CUSTOM PANEL =====
+    function renderCustomPanel(startLoc, endLoc, waypointLocs, osrmRoute) {
+      var distKm = Math.round(osrmRoute.distance / 1000);
+      var durMins = Math.round(osrmRoute.duration / 60);
+      var hours = Math.floor(durMins / 60);
+      var mins = durMins % 60;
+      var durStr = hours + 'h ' + mins + 'm';
+
+      document.getElementById('rp-title').textContent = startLoc.name + ' to ' + endLoc.name;
+      var viaNames = waypointLocs.map(function(w) { return w.name; }).join(', ');
+      document.getElementById('rp-via').textContent = viaNames ? 'Via ' + viaNames : 'Direct route';
+      document.getElementById('rp-distance').textContent = distKm.toLocaleString() + ' km';
+      document.getElementById('rp-duration').textContent = durStr;
+      document.getElementById('rp-ferries').textContent = '0';
+
+      // Cost estimation
+      var fuelCost = Math.round(distKm * 0.05 * 1.70);
+      var days = Math.max(1, Math.ceil(durMins / 60 / 8)); // ~8h riding per day
+      var foodCost = days * 30;
+      var accCost = Math.max(0, days - 1) * 70; // ~€70/night avg
+      var totalCost = fuelCost + foodCost + accCost;
+      document.getElementById('rp-cost').textContent = '€' + totalCost.toLocaleString();
+
+      // Cost breakdown
+      var breakdownEl = document.getElementById('cost-breakdown');
+      var total = fuelCost + foodCost + accCost;
+      var items = [
+        { label: 'Fuel', amount: fuelCost, color: '#FF5722' },
+        { label: 'Accommodation', amount: accCost, color: '#8B5CF6' },
+        { label: 'Food (~€30/day)', amount: foodCost, color: '#22C55E' }
+      ];
+      var barHTML = '<div class="cost-bar-wrap">';
+      var legendHTML = '<div class="cost-legend">';
+      items.forEach(function(item) {
+        if (item.amount > 0) {
+          var pct = Math.max(Math.round((item.amount / total) * 100), 2);
+          barHTML += '<div class="cost-bar-seg" style="width:' + pct + '%;background:' + item.color + '"></div>';
+          legendHTML += '<div class="cost-legend-item"><div class="cost-legend-dot" style="background:' + item.color + '"></div>' + item.label + ' <span class="cost-legend-amount">€' + item.amount + '</span></div>';
+        }
+      });
+      barHTML += '</div>';
+      legendHTML += '</div>';
+      breakdownEl.innerHTML = '<div class="cost-breakdown"><div class="cost-breakdown-title">Estimated Trip Cost Breakdown</div>' + barHTML + legendHTML + '<div style="font-size:.5625rem;color:#9ca3af;margin-top:6px">Based on avg motorcycle 5L/100km at €1.70/L. Accommodation est. €70/night. ' + days + ' riding day(s).</div></div>';
+
+      // Segments: single segment for custom route
+      var segContainer = document.getElementById('segments-container');
+      segContainer.innerHTML = '<div class="segments-title">Route Overview</div>';
+      var wpTimeline = '';
+      waypointLocs.forEach(function(wp) {
+        wpTimeline +=
+          '<div class="timeline-line"></div>' +
+          '<div class="timeline-point"><div class="timeline-dot primary"><div class="inner"></div></div>' +
+          '<div><div class="timeline-name">' + wp.name + '</div><div class="timeline-sub">Waypoint</div></div></div>';
+      });
+      segContainer.innerHTML +=
+        '<div class="segment-card"><div class="segment-header"><div class="title">' + startLoc.name + ' to ' + endLoc.name + '</div><div class="dist">' + distKm.toLocaleString() + ' km</div></div>' +
+        '<div class="segment-body">' +
+          '<div class="timeline-point"><div class="timeline-dot primary"><div class="inner"></div></div><div><div class="timeline-name">' + startLoc.name + '</div><div class="timeline-sub">Start</div></div></div>' +
+          wpTimeline +
+          '<div class="timeline-line"></div>' +
+          '<div class="timeline-point"><div class="timeline-dot primary"><div class="inner"></div></div><div><div class="timeline-name">' + endLoc.name + '</div><div class="timeline-sub">Destination</div></div></div>' +
+          '<div class="segment-note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg><span>Custom route via OSRM. Est. ' + days + ' riding day(s) at ~8h/day.</span></div>' +
+        '</div></div>';
+
+      // Clear POI, accommodation, ferry sections for custom route
+      document.getElementById('poi-container').innerHTML = '<div class="section-title">Points of Interest</div><div style="font-size:.8125rem;color:#6b7280;padding:0 4px">Explore the map to discover points of interest along your custom route.</div>';
+      document.getElementById('acc-container').innerHTML = '<div class="section-title">Accommodation Options</div><div style="font-size:.8125rem;color:#6b7280;padding:0 4px">Search for accommodation along your route at your preferred stops.</div>';
+      document.getElementById('ferry-container').innerHTML = '<div class="section-title">Ferry Crossings</div><div class="ferry-box"><p>Check ferry requirements for your custom route at ports along the way.</p></div>';
+
+      // Unhighlight saved routes
+      document.querySelectorAll('.saved-route').forEach(function(el) { el.style.background = ''; });
+    }
+
+    // ===== CALCULATE BUTTON =====
+    document.getElementById('btn-calc').addEventListener('click', async function() {
+      var startVal = document.querySelector('.form-input[placeholder*="starting"]').value.trim();
+      var endVal = document.querySelector('.form-input[placeholder*="destination"]').value.trim();
+      if (!startVal || !endVal) return;
+
+      var startLower = startVal.toLowerCase();
+      var endLower = endVal.toLowerCase();
+
+      // 1) Try to match a pre-defined route first
+      var matched = null;
+      routeKeys.forEach(function(key) {
+        var r = ROUTES[key];
+        if (r.start.name.toLowerCase() === startLower && r.end.name.toLowerCase() === endLower) {
+          matched = key;
+        }
+      });
+      if (!matched) {
+        routeKeys.forEach(function(key) {
+          if (matched) return;
+          var r = ROUTES[key];
+          var haystack = (r.name + ' ' + r.description + ' ' + r.start.name + ' ' + r.end.name).toLowerCase();
+          if (haystack.indexOf(startLower) !== -1 && haystack.indexOf(endLower) !== -1) {
+            matched = key;
+          }
+        });
+      }
+
+      if (matched) {
+        loadRoute(matched);
+        return;
+      }
+
+      // 2) Custom route: geocode + OSRM
+      var btn = document.getElementById('btn-calc');
+      btn.classList.add('loading');
+      btn.innerHTML = '<svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"><circle style="opacity:.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Calculating...';
+
+      try {
+        // Geocode start, end, and waypoints
+        var startGeo = await geocode(startVal);
+        var endGeo = await geocode(endVal);
+        if (!startGeo || !endGeo) {
+          alert('Could not find one or both locations. Please check the city names and try again.');
+          return;
+        }
+
+        var wpInputs = document.querySelectorAll('.wp-input');
+        var waypointGeos = [];
+        for (var i = 0; i < wpInputs.length; i++) {
+          var wpVal = wpInputs[i].value.trim();
+          if (wpVal) {
+            var wpGeo = await geocode(wpVal);
+            if (wpGeo) waypointGeos.push(wpGeo);
+          }
+        }
+
+        // Build points array: start + waypoints + end
+        var allPoints = [startGeo].concat(waypointGeos).concat([endGeo]);
+
+        // Fetch OSRM route
+        var osrmRoute = await fetchOSRMRoute(allPoints);
+        if (!osrmRoute) {
+          alert('Could not calculate a driving route between these locations. They may be on different landmasses requiring a ferry.');
+          return;
+        }
+
+        // Render on map and panel
+        renderCustomRoute(startGeo, endGeo, waypointGeos, osrmRoute);
+        renderCustomPanel(startGeo, endGeo, waypointGeos, osrmRoute);
+
+      } catch (err) {
+        console.error('Route calculation error:', err);
+        alert('Something went wrong calculating the route. Please try again.');
+      } finally {
+        btn.classList.remove('loading');
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Calculate Route';
+      }
+    });
+
+    // ===== INITIAL LOAD =====
+    setTimeout(function() { map.invalidateSize(); }, 100);
+    loadRoute('alpine');
+    setTimeout(function() { map.invalidateSize(); }, 500);
+    } // end initApp
+
+    // Load Leaflet dynamically, then init
+    (function() {
+      var script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = function() { initApp(); };
+      script.onerror = function() {
+        // Retry once from cdnjs
+        var retry = document.createElement('script');
+        retry.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+        retry.onload = function() { initApp(); };
+        document.head.appendChild(retry);
+      };
+      document.head.appendChild(script);
+    })();
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>

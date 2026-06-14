@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SavedRoute, formatDistance, formatDuration } from "@/lib/utils";
@@ -8,15 +9,28 @@ import { FerryInfo } from "./FerryInfo";
 
 interface RouteDetailsProps {
   routeId?: number;
+  routeData?: SavedRoute;
   onClose?: () => void;
   className?: string;
 }
 
-export function RouteDetails({ routeId, onClose, className }: RouteDetailsProps) {
-  const { data: routeData, isLoading, error } = useQuery<SavedRoute>({
-    queryKey: ['/api/routes', routeId],
-    enabled: !!routeId,
+export function RouteDetails({ routeId, routeData: propRouteData, onClose, className }: RouteDetailsProps) {
+  const { data: fetchedRouteData, isLoading, error } = useQuery<SavedRoute>({
+    queryKey: [`/api/routes/${routeId}`],
+    enabled: routeId !== undefined && !propRouteData,
   });
+
+  const routeData = propRouteData ?? fetchedRouteData;
+
+  const distanceInKm = routeData ? Number(routeData.distance) : 0;
+  const durationInMinutes = routeData ? parseInt(routeData.duration) : 0;
+  const ridingDays = durationInMinutes > 0 ? Math.max(1, Math.ceil(durationInMinutes / (8 * 60))) : 1;
+
+  const fuelCost = Math.round(distanceInKm * 0.05 * 1.7);
+  const accommodationCost = Math.max(0, ridingDays - 1) * 70;
+  const foodCost = ridingDays * 30;
+  const ferryCost = Math.round((routeData?.ferryRoutes ?? []).reduce((sum, ferryRoute) => sum + Number(ferryRoute.price), 0));
+  const totalEstimatedCost = fuelCost + accommodationCost + foodCost + ferryCost;
 
   return (
     <div id="route-panel" className={`bg-white w-80 h-full shadow-lg overflow-hidden ${className}`}>
@@ -36,7 +50,7 @@ export function RouteDetails({ routeId, onClose, className }: RouteDetailsProps)
           )}
         </div>
         
-        {isLoading ? (
+        {isLoading && !propRouteData ? (
           <div className="p-4 bg-light-bg">
             <Skeleton className="h-6 w-3/4 mb-2" />
             <Skeleton className="h-4 w-1/2 mb-4" />
@@ -94,8 +108,25 @@ export function RouteDetails({ routeId, onClose, className }: RouteDetailsProps)
                 </div>
                 <div className="text-center">
                   <div className="text-gray-600">Ferries</div>
-                  <div className="font-medium text-base">0</div>
+                  <div className="font-medium text-base">{routeData.ferryRoutes.length}</div>
                 </div>
+                <div className="text-center">
+                  <div className="text-gray-600">Est. Cost</div>
+                  <div className="font-medium text-base text-accent">€{totalEstimatedCost}</div>
+                </div>
+              </div>
+
+              <div className="mt-3 bg-white border border-gray-200 rounded-md p-3 text-xs text-gray-600">
+                <div className="font-medium text-primary mb-2">Estimated Trip Cost Breakdown</div>
+                <div className="flex justify-between"><span>Fuel</span><span>€{fuelCost}</span></div>
+                <div className="flex justify-between"><span>Accommodation</span><span>€{accommodationCost}</span></div>
+                <div className="flex justify-between"><span>Food (~€30/day)</span><span>€{foodCost}</span></div>
+                <div className="flex justify-between"><span>Ferries</span><span>€{ferryCost}</span></div>
+                <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between font-medium text-gray-800">
+                  <span>Total</span>
+                  <span>€{totalEstimatedCost}</span>
+                </div>
+                <p className="mt-2 text-[11px] text-gray-500">Based on avg motorcycle 5L/100km at €1.70/L. Accommodation est. €70/night. Ferries from listed crossings.</p>
               </div>
             </div>
             
@@ -128,7 +159,7 @@ export function RouteDetails({ routeId, onClose, className }: RouteDetailsProps)
                         </div>
                         
                         {segment.waypoints.map((waypoint, idx) => (
-                          <React.Fragment key={idx}>
+                          <Fragment key={idx}>
                             <div className="ml-[7px] h-10 border-l-2 border-dashed border-gray-300 my-1"></div>
                             <div className="flex items-start">
                               <div className="mt-1 mr-3">
@@ -141,7 +172,7 @@ export function RouteDetails({ routeId, onClose, className }: RouteDetailsProps)
                                 <div className="text-sm text-gray-500">Waypoint</div>
                               </div>
                             </div>
-                          </React.Fragment>
+                          </Fragment>
                         ))}
                         
                         <div className="ml-[7px] h-10 border-l-2 border-dashed border-gray-300 my-1"></div>
@@ -178,10 +209,10 @@ export function RouteDetails({ routeId, onClose, className }: RouteDetailsProps)
               <PointsOfInterest points={routeData.pointsOfInterest} />
               
               {/* Accommodation Options */}
-              <Accommodation accommodations={routeData.accommodation} />
+              <Accommodation accommodations={routeData.accommodations} />
               
               {/* Ferry Options */}
-              <FerryInfo includeFerries={routeData.preferences.includeFerries} />
+              <FerryInfo includeFerries={routeData.preferences.includeFerries} ferryRoutes={routeData.ferryRoutes} />
             </div>
           </>
         ) : (

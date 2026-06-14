@@ -20,9 +20,9 @@ interface MapRoute {
 }
 
 export function useMap(containerId: string, options: UseMapOptions = {}) {
-  const mapRef = React.useRef<L.Map | null>(null);
-  const routeLayerRef = React.useRef<L.LayerGroup | null>(null);
-  const markersLayerRef = React.useRef<L.LayerGroup | null>(null);
+  const mapRef = React.useRef<any | null>(null);
+  const routeLayerRef = React.useRef<any | null>(null);
+  const markersLayerRef = React.useRef<any | null>(null);
   const [mapLoaded, setMapLoaded] = React.useState(false);
 
   React.useEffect(() => {
@@ -33,10 +33,12 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
       zoom: options.zoom || 5,
     });
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    // Use CartoDB tiles which show English/Latin names
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       maxZoom: 19,
+      subdomains: 'abcd',
     }).addTo(mapInstance);
 
     routeLayerRef.current = L.layerGroup().addTo(mapInstance);
@@ -60,13 +62,24 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
   }, []);
 
   const addRoute = React.useCallback((route: MapRoute) => {
-    if (!mapRef.current || !routeLayerRef.current) return;
+    console.log('[useMap] addRoute called', { 
+      hasMap: !!mapRef.current, 
+      hasRouteLayer: !!routeLayerRef.current,
+      route 
+    });
+    
+    if (!mapRef.current || !routeLayerRef.current) {
+      console.warn('[useMap] Cannot add route - map or routeLayer not initialized');
+      return;
+    }
 
     const waypoints = [
       L.latLng(route.start.lat, route.start.lng),
       ...(route.waypoints || []).map((wp) => L.latLng(wp.lat, wp.lng)),
       L.latLng(route.end.lat, route.end.lng),
     ];
+
+    console.log('[useMap] Created waypoints array with', waypoints.length, 'points');
 
     const routeColor =
       route.color ||
@@ -80,15 +93,19 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
     };
 
     if (waypoints.length >= 2) {
+      console.log('[useMap] Adding polyline with color', routeColor);
       const polyline = L.polyline(waypoints, lineOptions);
       routeLayerRef.current.addLayer(polyline);
+      console.log('[useMap] Polyline added successfully');
+    } else {
+      console.warn('[useMap] Not enough waypoints to create polyline:', waypoints.length);
     }
   }, []);
 
   const addMarker = React.useCallback(
     (
       position: Coordinates,
-      markerOptions: L.MarkerOptions = {},
+      markerOptions: any = {},
       popupContent?: string
     ) => {
       if (!mapRef.current || !markersLayerRef.current) return;
@@ -142,7 +159,7 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
   }, []);
 
   const fitBounds = React.useCallback(
-    (bounds: L.LatLngBoundsExpression) => {
+    (bounds: any) => {
       mapRef.current?.fitBounds(bounds);
     },
     []
