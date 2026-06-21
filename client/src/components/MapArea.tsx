@@ -52,7 +52,7 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
     motorcycle_parking: true,
     hospital: true,
   });
-  const { map, mapLoaded, addRoute, addMarker, addPointOfInterest, clearRoutes, clearMarkers, fitBounds, addWeatherMarker, clearWeatherMarkers } = useMap("map-container");
+  const { mapLoaded, addRoute, addMarker, addPointOfInterest, clearRoutes, clearMarkers, fitBounds, addWeatherMarker, clearWeatherMarkers } = useMap("map-container");
   
   // Check for dynamic route in sessionStorage
   const [dynamicRoute, setDynamicRoute] = useState<SavedRoute | null>(null);
@@ -61,15 +61,12 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
     // Listen for dynamic route calculation events (no sessionStorage to avoid security errors)
     const handleDynamicRoute = (event: Event) => {
       const customEvent = event as CustomEvent;
-      console.log('[MapArea] Received dynamicRouteCalculated event:', customEvent.detail);
       if (customEvent.detail) {
-        console.log('[MapArea] Setting dynamic route:', customEvent.detail.name);
         setDynamicRoute(customEvent.detail);
       }
     };
     
     window.addEventListener('dynamicRouteCalculated', handleDynamicRoute);
-    console.log('[MapArea] Event listener registered for dynamicRouteCalculated');
     return () => window.removeEventListener('dynamicRouteCalculated', handleDynamicRoute);
   }, []);
   
@@ -96,28 +93,9 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
   });
 
-  console.log('[MapArea] Route data state:', { 
-    routeId, 
-    hasDynamicRoute: !!dynamicRoute, 
-    hasFetchedRoute: !!fetchedRouteData,
-    finalRouteData: !!routeData,
-    routeName: routeData?.name,
-    poisCount: pois?.length
-  });
-
   // Render the route when the data is loaded
   useEffect(() => {
-    console.log('[MapArea] Render useEffect triggered', { 
-      mapLoaded, 
-      hasRouteData: !!routeData, 
-      routeId,
-      routeName: routeData?.name,
-      segmentCount: routeData?.segments?.length
-    });
-    
     if (mapLoaded && routeData) {
-      console.log('[MapArea] Rendering route:', routeData.name, 'with', routeData.segments?.length, 'segments');
-      
       // Clear previous routes and markers
       clearRoutes();
       clearMarkers();
@@ -128,12 +106,6 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
       
       // Add route segments
       routeData.segments.forEach((segment: RouteSegment, index: number) => {
-        console.log(`[MapArea] Adding segment ${index + 1}:`, segment.title, {
-          start: segment.startLocation.coordinates,
-          end: segment.endLocation.coordinates,
-          waypointCount: segment.waypoints?.length || 0
-        });
-        
         const isFerry = !!(
           segment.notes?.toLowerCase().includes('ferry') ||
           segment.title?.toLowerCase().includes('ferry')
@@ -142,6 +114,7 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
           start: segment.startLocation.coordinates,
           end: segment.endLocation.coordinates,
           waypoints: segment.waypoints.map(wp => wp.coordinates),
+          geometry: segment.geometry,
           isScenic: segment.isScenic,
           isFerry,
         });
@@ -157,11 +130,11 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
         [routeData.startLocation.coordinates.lat, routeData.startLocation.coordinates.lng],
         [routeData.endLocation.coordinates.lat, routeData.endLocation.coordinates.lng],
         ...routeData.segments.flatMap(segment => 
-          segment.waypoints.map(wp => [wp.coordinates.lat, wp.coordinates.lng])
+          (segment.geometry?.length ? segment.geometry : segment.waypoints.map(wp => wp.coordinates))
+            .map(point => [point.lat, point.lng])
         )
       ];
       
-      console.log('[MapArea] Fitting bounds with', bounds.length, 'points');
       fitBounds(bounds as any);
     }
   }, [mapLoaded, routeData, addRoute, addMarker, addPointOfInterest, clearRoutes, clearMarkers, fitBounds, routeId]);
@@ -174,8 +147,6 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
     clearMarkers();
 
     if (pois && showPOIs) {
-      console.log('[MapArea] Rendering', pois.length, 'POIs');
-      
       // Filter POIs based on active filters
       const filteredPOIs = pois.filter(poi => poiFilters[poi.type as keyof typeof poiFilters]);
       
@@ -185,10 +156,6 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
         const popupContent = buildPOIPopup(poi, icon);
         addMarker(poi.coordinates, { color: getPOIColor(poi.type) }, popupContent);
       });
-      
-      console.log('[MapArea] Rendered', filteredPOIs.length, 'filtered POIs');
-    } else {
-      console.log('[MapArea] POIs hidden, markers cleared');
     }
 
     // Re-add route markers if route exists
@@ -235,14 +202,6 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
       setWeatherLoading(false);
     }).catch(() => setWeatherLoading(false));
   }, [showWeather, routeData, mapLoaded, addWeatherMarker, clearWeatherMarkers]);
-
-  // Handle map style change
-  useEffect(() => {
-    if (map) {
-      // In a real implementation, we would change the tile layer here
-      console.log(`Changed map style to: ${mapStyle}`);
-    }
-  }, [map, mapStyle]);
 
   const getPOIIcon = (type: string): string => {
     const icons: Record<string, string> = {

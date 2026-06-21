@@ -95,6 +95,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route search (must be before /routes/:id to avoid conflict)
+  app.get(`${apiPrefix}/routes/search`, async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+
+      const routes = await storage.searchRoutes(query);
+      res.json(routes);
+    } catch (error) {
+      console.error("Error searching routes:", error);
+      res.status(500).json({ message: "Failed to search routes" });
+    }
+  });
+
   // Get POIs along a route (must be before /routes/:id to avoid conflict)
   app.get(`${apiPrefix}/routes/:id/pois`, async (req, res) => {
     try {
@@ -136,8 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[API] Collected ${allWaypoints.length} major points from route`);
 
       const poiService = new POIService();
-      // 8 per location = balanced across gas, repair, parking, hotel, restaurant
-      const pois = await poiService.getPOIsAlongRoute(allWaypoints, 10, 8);
+      const pois = await poiService.getPOIsInBoundingBoxForRoute(route);
 
       // Cache the results (memory + disk)
       const cacheEntry = { pois, timestamp: Date.now() };
@@ -297,22 +312,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json(data);
-  });
-
-  // Route search
-  app.get(`${apiPrefix}/routes/search`, async (req, res) => {
-    try {
-      const query = req.query.q as string;
-      if (!query) {
-        return res.status(400).json({ message: "Search query is required" });
-      }
-
-      const routes = await storage.searchRoutes(query);
-      res.json(routes);
-    } catch (error) {
-      console.error("Error searching routes:", error);
-      res.status(500).json({ message: "Failed to search routes" });
-    }
   });
 
   // Flush POI cache — clears memory + disk so next request fetches fresh data

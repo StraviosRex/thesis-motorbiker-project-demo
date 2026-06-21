@@ -86,55 +86,83 @@ export class POIService {
   async getPOIsInBoundingBoxForRoute(route: { startLocation: any; endLocation: any; segments: any[] }): Promise<POI[]> {
     const allPOIs: POI[] = [];
     const waypoints: Coordinates[] = [];
+    const allCoords: Coordinates[] = [];
+
+    const addCoord = (coord?: Coordinates) => {
+      if (!coord) return;
+      allCoords.push(coord);
+      waypoints.push(coord);
+    };
 
     if (route.startLocation?.coordinates) {
-      waypoints.push(route.startLocation.coordinates);
+      addCoord(route.startLocation.coordinates);
     }
 
     for (const segment of (route.segments ?? [])) {
-      const coords: { lat: number; lng: number }[] = [];
-      if (segment.startLocation?.coordinates) {
-        coords.push(segment.startLocation.coordinates);
-        waypoints.push(segment.startLocation.coordinates);
-      }
-      if (segment.endLocation?.coordinates) {
-        coords.push(segment.endLocation.coordinates);
-        waypoints.push(segment.endLocation.coordinates);
-      }
+      if (segment.startLocation?.coordinates) addCoord(segment.startLocation.coordinates);
       for (const wp of (segment.waypoints ?? [])) {
-        if (wp.coordinates) {
-          coords.push(wp.coordinates);
-          waypoints.push(wp.coordinates);
-        }
+        if (wp.coordinates) addCoord(wp.coordinates);
       }
-
-      if (coords.length < 2) continue;
-
-      const lats = coords.map(c => c.lat);
-      const lngs = coords.map(c => c.lng);
-      const padding = 0.3;
-      const south = Math.min(...lats) - padding;
-      const north = Math.max(...lats) + padding;
-      const west = Math.min(...lngs) - padding;
-      const east = Math.max(...lngs) + padding;
-
-      console.log(`[POIService] Segment bbox: ${south.toFixed(2)},${west.toFixed(2)},${north.toFixed(2)},${east.toFixed(2)}`);
-
-      await this.waitForRateLimit();
-      const pois = await this.queryMotorcyclePOIs(south, west, north, east);
-      allPOIs.push(...pois);
+      if (segment.endLocation?.coordinates) addCoord(segment.endLocation.coordinates);
     }
 
     if (route.endLocation?.coordinates) {
-      waypoints.push(route.endLocation.coordinates);
+      addCoord(route.endLocation.coordinates);
+    }
+
+    const dedupedWaypoints = waypoints.filter((wp, i, arr) =>
+      i === arr.findIndex(p => p.lat === wp.lat && p.lng === wp.lng)
+    );
+
+    if (allCoords.length === 0 || dedupedWaypoints.length === 0) {
+      return [];
+    }
+
+    const routeLats = allCoords.map(c => c.lat);
+    const routeLngs = allCoords.map(c => c.lng);
+    const routePadding = 0.3;
+    const routeSouth = Math.min(...routeLats) - routePadding;
+    const routeNorth = Math.max(...routeLats) + routePadding;
+    const routeWest = Math.min(...routeLngs) - routePadding;
+    const routeEast = Math.max(...routeLngs) + routePadding;
+    const routeArea = (routeNorth - routeSouth) * (routeEast - routeWest);
+
+    // A single route bbox is fastest for compact routes. For very large trips,
+    // segment bboxes avoid asking Overpass to scan half a continent.
+    if (routeArea <= 16) {
+      console.log(`[POIService] Route bbox: ${routeSouth.toFixed(2)},${routeWest.toFixed(2)},${routeNorth.toFixed(2)},${routeEast.toFixed(2)}`);
+      allPOIs.push(...await this.getPOIsInBoundingBox(routeSouth, routeWest, routeNorth, routeEast, 160));
+    } else {
+      console.log(`[POIService] Large route bbox (${routeArea.toFixed(1)} deg^2), using segment bboxes`);
+
+      for (const segment of (route.segments ?? [])) {
+        const coords: Coordinates[] = [];
+        if (segment.startLocation?.coordinates) coords.push(segment.startLocation.coordinates);
+        if (segment.endLocation?.coordinates) coords.push(segment.endLocation.coordinates);
+        for (const wp of (segment.waypoints ?? [])) {
+          if (wp.coordinates) coords.push(wp.coordinates);
+        }
+
+        if (coords.length < 2) continue;
+
+        const lats = coords.map(c => c.lat);
+        const lngs = coords.map(c => c.lng);
+        const padding = 0.3;
+        const south = Math.min(...lats) - padding;
+        const north = Math.max(...lats) + padding;
+        const west = Math.min(...lngs) - padding;
+        const east = Math.max(...lngs) + padding;
+
+        console.log(`[POIService] Segment bbox: ${south.toFixed(2)},${west.toFixed(2)},${north.toFixed(2)},${east.toFixed(2)}`);
+
+        await this.waitForRateLimit();
+        const pois = await this.getPOIsInBoundingBox(south, west, north, east, 80);
+        allPOIs.push(...pois);
+      }
     }
 
     const uniquePOIs = Array.from(
       new Map(allPOIs.map(poi => [poi.id, poi])).values()
-    );
-
-    const dedupedWaypoints = waypoints.filter((wp, i, arr) =>
-      i === arr.findIndex(p => p.lat === wp.lat && p.lng === wp.lng)
     );
 
     const result: POI[] = [];

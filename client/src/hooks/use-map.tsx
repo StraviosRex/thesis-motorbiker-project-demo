@@ -47,6 +47,7 @@ interface MapRoute {
   start: Coordinates;
   end: Coordinates;
   waypoints?: Coordinates[];
+  geometry?: Coordinates[];
   color?: string;
   isScenic?: boolean;
   isFerry?: boolean;
@@ -115,6 +116,12 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
       ...(route.waypoints || []).map((wp) => L.latLng(wp.lat, wp.lng)),
       L.latLng(route.end.lat, route.end.lng),
     ];
+
+    if (route.geometry && route.geometry.length >= 2) {
+      const points = route.geometry.map(c => L.latLng(c.lat, c.lng));
+      routeLayerRef.current.addLayer(L.polyline(points, lineOptions));
+      return;
+    }
 
     // Ferry legs: keep straight dashed line — no road geometry exists across water
     if (route.isFerry) {

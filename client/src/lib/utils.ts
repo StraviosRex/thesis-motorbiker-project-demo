@@ -26,6 +26,7 @@ export interface RouteSegment {
   startTime: string;
   endTime: string;
   waypoints: Location[];
+  geometry?: Coordinates[];
   notes?: string;
   isScenic?: boolean;
   surfaceData?: { asphalt: number; gravel: number; dirt: number };
@@ -246,6 +247,7 @@ export interface SavedRoute {
   endLocation: Location;
   distance: number;
   duration: string;
+  geometry?: Coordinates[];
   segments: RouteSegment[];
   pointsOfInterest: PointOfInterest[];
   accommodations: Accommodation[];
