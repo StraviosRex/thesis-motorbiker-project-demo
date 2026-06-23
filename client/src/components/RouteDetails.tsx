@@ -75,7 +75,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
   return (
     <div
       id="route-panel"
-      className={`flex flex-col bg-slate-900 w-full sm:w-80 h-full shadow-2xl border-l border-slate-700/50 overflow-hidden ${className}`}
+      className={`app-panel flex flex-col w-full sm:w-80 h-full shadow-2xl border-l overflow-hidden ${className}`}
     >
       {/* Panel header */}
       <div className="px-4 py-3.5 border-b border-slate-700 flex justify-between items-center bg-gradient-to-r from-slate-950 to-slate-900 shrink-0">
@@ -164,32 +164,61 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                 ))}
               </div>
 
-              {/* Bike compatibility */}
+              {/* Bike and road guidance */}
               {bikeClass && routeData && (() => {
                 const compat = getRouteCompatibility(routeData, bikeClass);
-                const cls    = BIKE_CLASSES.find(c => c.id === bikeClass)!;
-                const style  =
-                  compat.score === 'excellent' ? 'bg-green-900/30 border-green-700/50 text-green-300' :
-                  compat.score === 'good'      ? 'bg-blue-900/30  border-blue-700/50  text-blue-300'  :
-                  compat.score === 'caution'   ? 'bg-yellow-900/30 border-yellow-700/50 text-yellow-300' :
-                                                 'bg-red-900/30   border-red-700/50   text-red-300';
+                const cls = BIKE_CLASSES.find(c => c.id === bikeClass)!;
+                const guidanceTips = compat.tips.filter((tip) => tip !== compat.surface?.roadFit);
+
                 return (
-                  <div className={`mt-2.5 border rounded-lg p-2.5 text-xs ${style}`}>
-                    <div className="flex items-center gap-1.5 font-bold text-sm mb-1">
-                      <span>{cls.emoji}</span>
-                      <span>{compat.label}</span>
+                  <section className={`bike-guidance bike-guidance--${compat.score} mt-2.5 rounded-xl border p-3`} aria-label={`${cls.name} road guidance`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="bike-guidance-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                          <img src={cls.icon} alt="" className="h-8 w-8 object-contain" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="bike-guidance-eyebrow text-[10px] font-bold uppercase tracking-widest">Bike and road fit</p>
+                          <h4 className="text-sm font-bold leading-tight">{cls.name}</h4>
+                        </div>
+                      </div>
+                      <span className="bike-guidance-status shrink-0 rounded-full px-2 py-1 text-[10px] font-bold">{compat.label}</span>
                     </div>
-                    {compat.tips.length > 0 && (
-                      <ul className="space-y-0.5 text-[11px] opacity-90">
-                        {compat.tips.map((tip, i) => (
-                          <li key={i} className="flex gap-1"><span>•</span><span>{tip}</span></li>
+
+                    <div className="bike-guidance-summary mt-3 rounded-lg p-2.5 text-xs leading-snug">
+                      {compat.surface?.roadFit ?? cls.routeHint}
+                    </div>
+
+                    {compat.surface && (
+                      <div className="mt-2.5">
+                        <div className="mb-1.5 flex items-center justify-between text-[10px]">
+                          <span className="bike-guidance-eyebrow font-bold uppercase tracking-widest">Road surface</span>
+                          <span className="bike-guidance-sample">{compat.surface.sampledSegments} mapped leg{compat.surface.sampledSegments === 1 ? "" : "s"}</span>
+                        </div>
+                        <div className="bike-surface-meter flex h-2 overflow-hidden rounded-full">
+                          <span className="bike-surface-asphalt" style={{ width: `${compat.surface.asphalt}%` }} />
+                          <span className="bike-surface-gravel" style={{ width: `${compat.surface.gravel}%` }} />
+                          <span className="bike-surface-dirt" style={{ width: `${compat.surface.dirt}%` }} />
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+                          <span><i className="bike-surface-dot bike-surface-asphalt" />{compat.surface.asphalt}% asphalt</span>
+                          {compat.surface.gravel > 0 && <span><i className="bike-surface-dot bike-surface-gravel" />{compat.surface.gravel}% gravel</span>}
+                          {compat.surface.dirt > 0 && <span><i className="bike-surface-dot bike-surface-dirt" />{compat.surface.dirt}% dirt</span>}
+                        </div>
+                      </div>
+                    )}
+
+                    {guidanceTips.length > 0 && (
+                      <ul className="bike-guidance-tips mt-2.5 space-y-1 text-[11px] leading-snug">
+                        {guidanceTips.map((tip, index) => (
+                          <li key={index} className="flex gap-1.5"><span aria-hidden="true">•</span><span>{tip}</span></li>
                         ))}
                       </ul>
                     )}
-                  </div>
+                  </section>
                 );
               })()}
-            </div>
+              </div>
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto sidebar-scrollbar">
@@ -244,9 +273,9 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                 {segmentsOpen && (
                   <div className="px-4 pb-4 space-y-3">
                     {routeData.segments.map((segment, index) => (
-                      <div key={segment.id} className="border border-slate-700 rounded-lg overflow-hidden">
+                      <div key={segment.id} className={`route-segment-card border rounded-lg overflow-hidden ${segment.isScenic ? "route-segment-card--scenic" : ""}`}>
                         {/* Segment header */}
-                        <div className={`flex justify-between items-center px-3 py-2 border-b border-slate-700 ${segment.isScenic ? 'bg-green-900/20' : 'bg-slate-800'}`}>
+                        <div className="route-segment-header flex justify-between items-center px-3 py-2 border-b">
                           <div className="flex items-center gap-2">
                             <div className={`w-1 h-8 rounded-full shrink-0 ${segment.isScenic ? 'bg-green-500' : 'bg-orange-500'}`} />
                             <div>
@@ -260,7 +289,7 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                         </div>
 
                         {/* Segment body — timeline */}
-                        <div className="p-3 bg-slate-900/50 space-y-0">
+                        <div className="route-segment-body p-3 space-y-0">
                           {/* Start */}
                           <div className="flex items-start gap-3">
                             <div className="flex flex-col items-center shrink-0">
@@ -346,14 +375,14 @@ export function RouteDetails({ routeId, routeData: propRouteData, onClose, bikeC
                           {segment.speedLimits && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {segment.speedLimits.motorway && (
-                                <span className="text-[10px] bg-blue-900/40 border border-blue-700/50 rounded px-1.5 py-0.5 text-blue-300 font-medium">
+                                <span className="route-speed-badge route-speed-badge--motorway text-[10px] rounded-full px-2 py-0.5 font-semibold">
                                   Motorway {segment.speedLimits.motorway} km/h
                                 </span>
                               )}
-                              <span className="text-[10px] bg-green-900/40 border border-green-700/50 rounded px-1.5 py-0.5 text-green-300 font-medium">
+                              <span className="route-speed-badge route-speed-badge--rural text-[10px] rounded-full px-2 py-0.5 font-semibold">
                                 Rural {segment.speedLimits.rural} km/h
                               </span>
-                              <span className="text-[10px] bg-orange-900/40 border border-orange-700/50 rounded px-1.5 py-0.5 text-orange-300 font-medium">
+                              <span className="route-speed-badge route-speed-badge--urban text-[10px] rounded-full px-2 py-0.5 font-semibold">
                                 Urban {segment.speedLimits.urban} km/h
                               </span>
                             </div>

@@ -168,10 +168,17 @@ export const BIKE_CLASSES: BikeClassInfo[] = [
   },
 ];
 
+export interface RouteSurfaceSummary {
+  sampledSegments: number;
+  asphalt: number;
+  gravel: number;
+  dirt: number;
+  roadFit: string;
+}
 export function getRouteCompatibility(
   route: SavedRoute,
   bikeClass: BikeClass
-): { score: 'excellent' | 'good' | 'caution' | 'warning'; label: string; tips: string[] } {
+): { score: 'excellent' | 'good' | 'caution' | 'warning'; label: string; tips: string[]; surface?: RouteSurfaceSummary } {
   const cls = BIKE_CLASSES.find(c => c.id === bikeClass)!;
   const ridingDays = Math.max(1, Math.ceil(parseInt(route.duration) / (8 * 60)));
   const avgDailyKm = route.distance / ridingDays;
@@ -187,6 +194,41 @@ export function getRouteCompatibility(
     tips.push(`Average ~${Math.round(avgDailyKm)} km/day — slightly above typical ${cls.shortName} range (${cls.maxDailyKm} km).`);
   }
 
+  const surfaceSegments = route.segments.filter((segment) => Boolean(segment.surfaceData));
+  let surface: RouteSurfaceSummary | undefined;
+
+  if (surfaceSegments.length > 0) {
+    const sampledDistance = surfaceSegments.reduce((sum, segment) => sum + Math.max(segment.distance, 1), 0);
+    const surfacePercent = (kind: "asphalt" | "gravel" | "dirt") => Math.round(
+      surfaceSegments.reduce((sum, segment) => sum + (segment.surfaceData?.[kind] ?? 0) * Math.max(segment.distance, 1), 0) / sampledDistance
+    );
+    const asphalt = surfacePercent("asphalt");
+    const gravel = surfacePercent("gravel");
+    const dirt = surfacePercent("dirt");
+    const looseSurface = gravel + dirt;
+
+    if (cls.allowGravel) {
+      const roadFit = looseSurface > 0
+        ? `${asphalt}% asphalt and ${looseSurface}% loose surface across mapped segments — a natural fit for this bike.`
+        : `${asphalt}% asphalt across mapped segments — smooth, easy progress for this bike.`;
+      surface = { sampledSegments: surfaceSegments.length, asphalt, gravel, dirt, roadFit };
+      tips.push(roadFit);
+    } else if (looseSurface >= 15) {
+      warnings++;
+      const roadFit = `${looseSurface}% loose surface appears across mapped segments. This route is not ideal for ${cls.shortName} on standard road tyres.`;
+      surface = { sampledSegments: surfaceSegments.length, asphalt, gravel, dirt, roadFit };
+      tips.push(roadFit);
+    } else if (looseSurface > 0) {
+      cautions++;
+      const roadFit = `${asphalt}% asphalt with ${looseSurface}% gravel or dirt across mapped segments. Slow down or choose a paved alternative where possible.`;
+      surface = { sampledSegments: surfaceSegments.length, asphalt, gravel, dirt, roadFit };
+      tips.push(roadFit);
+    } else {
+      const roadFit = `${asphalt}% smooth asphalt across mapped segments — exactly the road surface this bike prefers.`;
+      surface = { sampledSegments: surfaceSegments.length, asphalt, gravel, dirt, roadFit };
+      tips.push(roadFit);
+    }
+  }
   const nameLower = route.name.toLowerCase();
 
   if (bikeClass === 'cruiser') {
@@ -233,10 +275,10 @@ export function getRouteCompatibility(
     tips.push(`${route.ferryRoutes.length} ferry crossing(s) — great for island hopping!`);
   }
 
-  if (warnings > 0) return { score: 'warning', label: `⚠️ Challenging for ${cls.shortName}`, tips };
-  if (cautions > 0) return { score: 'caution', label: `🟡 Manageable for ${cls.shortName}`, tips };
-  if (tips.length > 0) return { score: 'good', label: `✅ Good for ${cls.shortName}`, tips };
-  return { score: 'excellent', label: `🏆 Excellent for ${cls.shortName}`, tips };
+  if (warnings > 0) return { score: 'warning', label: 'Challenging fit', tips, surface };
+  if (cautions > 0) return { score: 'caution', label: 'Needs attention', tips, surface };
+  if (tips.length > 0) return { score: 'good', label: 'Good road fit', tips, surface };
+  return { score: 'excellent', label: 'Excellent road fit', tips, surface };
 }
 
 export interface SavedRoute {

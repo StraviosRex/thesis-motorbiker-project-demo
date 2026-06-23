@@ -52,8 +52,13 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
     motorcycle_parking: true,
     hospital: true,
   });
-  const { mapLoaded, addRoute, addMarker, addPointOfInterest, clearRoutes, clearMarkers, fitBounds, addWeatherMarker, clearWeatherMarkers } = useMap("map-container");
+  const { mapLoaded, addRoute, addMarker, addPointOfInterest, clearRoutes, clearMarkers, fitBounds, addWeatherMarker, clearWeatherMarkers, setBaseMap } = useMap("map-container");
   
+  useEffect(() => {
+    if (mapLoaded) {
+      setBaseMap(mapStyle);
+    }
+  }, [mapLoaded, mapStyle, setBaseMap]);
   // Check for dynamic route in sessionStorage
   const [dynamicRoute, setDynamicRoute] = useState<SavedRoute | null>(null);
   
@@ -267,7 +272,7 @@ export function MapArea({ routeId, onToggleSidebar, onToggleRoutePanel, showLege
   return (
     <div className="flex-1 flex flex-col">
       {/* Map controls */}
-      <div className="bg-slate-900 border-b border-slate-700 z-10">
+      <div className="map-toolbar border-b z-10">
         {/* Main toolbar row */}
         <div className="p-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 min-w-0">

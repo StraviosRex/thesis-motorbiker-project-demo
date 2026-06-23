@@ -40,6 +40,8 @@ export function AppLayout({
   const [bikeClass, setBikeClass] = useState<BikeClass | null>(null);
   const [startLocation, setStartLocation] = useState("");
   const [endLocation, setEndLocation] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [isCalculating, setIsCalculating] = useState(false);
 
   // Whether the left RoutePlanner sidebar is visible; hidden by default on mobile.
@@ -104,12 +106,16 @@ export function AppLayout({
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="app-shell flex flex-col h-screen">
       <Header
         startLocation={startLocation}
         endLocation={endLocation}
         onStartChange={setStartLocation}
         onEndChange={setEndLocation}
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
         onCalculate={() => window.dispatchEvent(new CustomEvent('headerCalculateRoute'))}
         isCalculating={isCalculating}
       />
@@ -138,6 +144,8 @@ export function AppLayout({
             endLocation={endLocation}
             onStartChange={setStartLocation}
             onEndChange={setEndLocation}
+            startDate={startDate}
+            endDate={endDate}
             onCalculatingChange={setIsCalculating}
             className={`transform transition-transform duration-300 ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} ${isMobile ? 'absolute z-50' : ''}`}
           />

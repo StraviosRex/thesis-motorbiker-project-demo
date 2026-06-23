@@ -38,6 +38,29 @@ async function fetchRoadGeometry(
   }
 }
 
+type BaseMapStyle = "roads" | "satellite" | "terrain";
+
+const BASE_MAPS: Record<BaseMapStyle, { url: string; options: any }> = {
+  roads: {
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    options: {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maxZoom: 19,
+      subdomains: "abcd",
+    },
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    options: { attribution: "Tiles &copy; Esri", maxZoom: 19 },
+  },
+  terrain: {
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    options: {
+      attribution: "Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap",
+      maxZoom: 17,
+    },
+  },
+};
 interface UseMapOptions {
   center?: [number, number];
   zoom?: number;
@@ -58,6 +81,7 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
   const routeLayerRef = React.useRef<any | null>(null);
   const markersLayerRef = React.useRef<any | null>(null);
   const weatherLayerRef = React.useRef<any | null>(null);
+  const baseLayerRef = React.useRef<any | null>(null);
   const [mapLoaded, setMapLoaded] = React.useState(false);
 
   React.useEffect(() => {
@@ -68,14 +92,8 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
       zoom: options.zoom || 5,
     });
 
-    // Use CartoDB tiles which show English/Latin names
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(mapInstance);
-
+    const roads = BASE_MAPS.roads;
+    baseLayerRef.current = L.tileLayer(roads.url, roads.options).addTo(mapInstance);
     routeLayerRef.current = L.layerGroup().addTo(mapInstance);
     markersLayerRef.current = L.layerGroup().addTo(mapInstance);
     weatherLayerRef.current = L.layerGroup().addTo(mapInstance);
@@ -89,6 +107,13 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
     };
   }, [containerId]);
 
+  const setBaseMap = React.useCallback((style: BaseMapStyle) => {
+    if (!mapRef.current) return;
+
+    baseLayerRef.current?.remove();
+    const definition = BASE_MAPS[style];
+    baseLayerRef.current = L.tileLayer(definition.url, definition.options).addTo(mapRef.current);
+  }, []);
   const clearRoutes = React.useCallback(() => {
     routeLayerRef.current?.clearLayers();
   }, []);
@@ -102,7 +127,7 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
 
     const routeColor =
       route.color ||
-      (route.isScenic ? "#22C55E" : route.isFerry ? "#0EA5E9" : "#FF5722");
+      (route.isFerry ? "#0EA5E9" : route.isScenic ? "#22C55E" : "#FF5722");
 
     const lineOptions = {
       color: routeColor,
@@ -261,5 +286,6 @@ export function useMap(containerId: string, options: UseMapOptions = {}) {
     fitBounds,
     addWeatherMarker,
     clearWeatherMarkers,
+    setBaseMap,
   };
 }
