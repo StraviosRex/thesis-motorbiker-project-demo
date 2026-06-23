@@ -3,6 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useMobile } from "@/hooks/use-mobile";
 import { useEffect, useState } from "react";
 import logoImg from "@/assets/logo-40.png";
+import { useUser, useLogout } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface HeaderProps {
   startLocation?: string;
@@ -77,6 +79,15 @@ export function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeId>("emerald");
+  const { data: user } = useUser();
+  const logout = useLogout();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await logout.mutateAsync();
+    toast({ title: "Signed out", description: "See you on the road!" });
+    setMenuOpen(false);
+  };
 
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("moto-route-theme") as ThemeId | null;
@@ -207,12 +218,26 @@ export function Header({
               </div>
             )}
           </div>
-          <Button
-            onClick={() => setLocation("/login")}
-            className="bg-orange-500 hover:bg-orange-400 text-white px-5 py-2 rounded font-bold tracking-wide transition shadow-lg hover:shadow-orange-500/30"
-          >
-            Sign In
-          </Button>
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-300 font-medium hidden lg:block">{user.username}</span>
+              <Button
+                onClick={handleLogout}
+                disabled={logout.isPending}
+                variant="ghost"
+                className="text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-semibold px-3 py-2 rounded transition"
+              >
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={() => setLocation("/login")}
+              className="bg-orange-500 hover:bg-orange-400 text-white px-5 py-2 rounded font-bold tracking-wide transition shadow-lg hover:shadow-orange-500/30"
+            >
+              Sign In
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 transition"
@@ -260,12 +285,26 @@ export function Header({
             >
               {isCalculating ? "Calculating..." : "Go"}
             </button>
-            <Button
-              onClick={() => { setLocation("/login"); setMenuOpen(false); }}
-              className="bg-orange-500 hover:bg-orange-400 text-white px-4 py-2 w-full rounded font-bold tracking-wide transition"
-            >
-              Sign In
-            </Button>
+            {user ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-slate-300 font-medium">{user.username}</span>
+                <Button
+                  onClick={handleLogout}
+                  disabled={logout.isPending}
+                  variant="ghost"
+                  className="text-slate-300 hover:text-white hover:bg-slate-800 text-sm font-semibold px-3 py-2 rounded transition"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
+              <Button
+                onClick={() => { setLocation("/login"); setMenuOpen(false); }}
+                className="bg-orange-500 hover:bg-orange-400 text-white px-4 py-2 w-full rounded font-bold tracking-wide transition"
+              >
+                Sign In
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => { setLocation("/saved-routes"); setMenuOpen(false); }}

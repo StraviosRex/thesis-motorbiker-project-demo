@@ -1,9 +1,9 @@
 import { db } from "@db";
-import { 
-  savedRoutes, 
-  pointsOfInterest, 
-  routeSegments, 
-  accommodations, 
+import {
+  savedRoutes,
+  pointsOfInterest,
+  routeSegments,
+  accommodations,
   locations,
   locations as locationsTable,
   SavedRoute,
@@ -13,7 +13,9 @@ import {
   Accommodation,
   Location,
   waypoints,
-  ferryRoutes
+  ferryRoutes,
+  users,
+  User,
 } from "@shared/schema";
 import { eq, ilike, or } from "drizzle-orm";
 
@@ -308,5 +310,24 @@ export const storage = {
       .values(accommodation)
       .returning();
     return newAccommodation;
-  }
+  },
+
+  getUserByUsername: async (username: string): Promise<User | undefined> => {
+    return await db.query.users.findFirst({
+      where: eq(users.username, username),
+    });
+  },
+
+  getUserById: async (id: number): Promise<User | undefined> => {
+    return await db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+  },
+
+  createUser: async (username: string, hashedPassword: string): Promise<User> => {
+    const [user] = await db.insert(users)
+      .values({ username, password: hashedPassword })
+      .returning();
+    return user;
+  },
 };

@@ -1,5 +1,7 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import passport from "passport";
+import { hashPassword } from "./auth";
 import { storage } from "./storage";
 import { eq } from "drizzle-orm";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
@@ -83,6 +85,56 @@ const calculateRouteSchema = z.object({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const apiPrefix = "/api";
+
+  // --- Auth routes ---
+
+  app.post(`${apiPrefix}/auth/register`, async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required" });
+    }
+    if (username.length < 3) {
+      return res.status(400).json({ message: "Username must be at least 3 characters" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+    const existing = await storage.getUserByUsername(username);
+    if (existing) {
+      return res.status(409).json({ message: "Username already taken" });
+    }
+    const hashed = await hashPassword(password);
+    const user = await storage.createUser(username, hashed);
+    req.login({ id: user.id, username: user.username }, (err) => {
+      if (err) return res.status(500).json({ message: "Login after register failed" });
+      res.status(201).json({ id: user.id, username: user.username });
+    });
+  });
+
+  app.post(`${apiPrefix}/auth/login`, (req, res, next) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
+      if (err) return next(err);
+      if (!user) return res.status(401).json({ message: info?.message ?? "Invalid credentials" });
+      req.login(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        res.json({ id: user.id, username: user.username });
+      });
+    })(req, res, next);
+  });
+
+  app.post(`${apiPrefix}/auth/logout`, (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.json({ message: "Logged out" });
+    });
+  });
+
+  app.get(`${apiPrefix}/auth/me`, (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    res.json({ id: req.user.id, username: req.user.username });
+  });
+
+  // --- App routes ---
 
   // Get all saved routes
   app.get(`${apiPrefix}/routes/saved`, async (req, res) => {
