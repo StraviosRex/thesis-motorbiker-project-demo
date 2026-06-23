@@ -68,38 +68,42 @@ export async function calculateDynamicRoute(
     ? ` · Roads: ${routeData.roadNames.slice(0, 5).join(', ')}`
     : '';
 
-  const segments: RouteSegment[] = await Promise.all(
-    routeData.segments.map(async (seg, index) => {
-      const segmentStartName = await geocodingService.reverseGeocode(seg.startCoords);
-      const segmentEndName = await geocodingService.reverseGeocode(seg.endCoords);
+  const segments: RouteSegment[] = [];
+  for (let index = 0; index < routeData.segments.length; index++) {
+    const seg = routeData.segments[index];
+    const isFirstSegment = index === 0;
+    const isLastSegment = index === routeData.segments.length - 1;
+    const segmentStartName = isFirstSegment
+      ? startLocation
+      : await geocodingService.reverseGeocode(seg.startCoords) || `Day ${seg.day} Start`;
+    const segmentEndName = isLastSegment
+      ? endLocation
+      : await geocodingService.reverseGeocode(seg.endCoords) || `Day ${seg.day} Stop`;
 
-      return {
-        id: index,
-        day: seg.day,
-        title: `Day ${seg.day}: ${segmentStartName || 'Start'} to ${segmentEndName || 'End'}`,
-        distance: seg.distance,
-        startLocation: {
-          id: 0,
-          name: segmentStartName || startLocation,
-          coordinates: seg.startCoords,
-        },
-        endLocation: {
-          id: 0,
-          name: segmentEndName || endLocation,
-          coordinates: seg.endCoords,
-        },
-        startTime: "09:00",
-        endTime: calculateEndTime(seg.duration),
-        waypoints: seg.waypoints.map((coords, wpIndex) => ({
-          id: wpIndex,
-          name: `Waypoint ${wpIndex + 1}`,
-          coordinates: coords,
-        })),
-        notes: `Approximately ${Math.round(seg.distance)}km, ${Math.round(seg.duration / 60)}h ${Math.round(seg.duration % 60)}min${roadNotesSuffix}`,
-        isScenic: preferences?.scenicRoutes || false,
-      };
-    })
-  );
+    segments.push({
+      id: index,
+      day: seg.day,
+      title: `Day ${seg.day}: ${segmentStartName} to ${segmentEndName}`,
+      distance: seg.distance,
+      startLocation: {
+        id: 0,
+        name: segmentStartName,
+        coordinates: seg.startCoords,
+      },
+      endLocation: {
+        id: 0,
+        name: segmentEndName,
+        coordinates: seg.endCoords,
+      },
+      startTime: "09:00",
+      endTime: calculateEndTime(Math.round(seg.duration)),
+      // Geometry points are for drawing the route, not user-facing stops.
+      waypoints: [],
+      geometry: seg.geometry,
+      notes: `Approximately ${Math.round(seg.distance)}km, ${Math.round(seg.duration / 60)}h ${Math.round(seg.duration % 60)}min${roadNotesSuffix}`,
+      isScenic: preferences?.scenicRoutes || false,
+    });
+  }
 
   // Step 5: Fetch enrichment data using bounding box of the route geometry
   const lats = routeData.geometry.map(c => c.lat);
@@ -187,7 +191,8 @@ export async function calculateDynamicRoute(
     startLocation: startLocationObj,
     endLocation: endLocationObj,
     distance: routeData.distance,
-    duration: `${Math.round(routeData.duration / 60)}`,
+    duration: `${Math.round(routeData.duration)}`,
+    geometry: routeData.geometry,
     segments,
     pointsOfInterest,
     accommodations,
@@ -199,8 +204,8 @@ export async function calculateDynamicRoute(
     createdAt: new Date().toISOString(),
     preferences: {
       scenicRoutes: preferences?.scenicRoutes || false,
-      avoidHighways: preferences?.avoidHighways || true,
-      includeFerries: preferences?.includeFerries || true,
+      avoidHighways: preferences?.avoidHighways ?? true,
+      includeFerries: preferences?.includeFerries ?? true,
     },
   };
 

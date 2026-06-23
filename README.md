@@ -14,6 +14,7 @@ A demo version of full-stack web application for planning motorcycle trips acros
 - **Accommodation listings** with biker-friendly features and pricing
 - **Interactive map** built on Leaflet + OpenStreetMap with route polylines and markers
 - **Scenic/highway preferences** — route can avoid motorways or favour twisty roads
+- **User authentication** — register, log in, and log out; sessions stored in Postgres
 - Graceful fallback: curated DB routes work even without an API key
 
 ---
@@ -26,6 +27,7 @@ A demo version of full-stack web application for planning motorcycle trips acros
 | Routing (client) | Wouter, TanStack Query |
 | Map | Leaflet 1.9, OpenStreetMap tiles |
 | Backend | Express.js, Node.js, TypeScript |
+| Auth | Passport.js (local strategy), express-session, connect-pg-simple |
 | Database | PostgreSQL (Neon Serverless), Drizzle ORM |
 | External APIs | OpenRouteService (routing), Nominatim (geocoding), Overpass (POIs) |
 
@@ -60,6 +62,7 @@ Edit `.env` and fill in your values:
 ```env
 DATABASE_URL=postgresql://YOUR_USER:YOUR_PASSWORD@YOUR_HOST:5432/YOUR_DB_NAME?sslmode=require
 OPENROUTESERVICE_API_KEY=your_key_here   # optional — see API Keys section
+SESSION_SECRET=a-long-random-string      # used to sign session cookies
 ```
 
 **3. Push the database schema**
@@ -96,12 +99,13 @@ EuropeanRiderGuide/
 ├── client/
 │   └── src/
 │       ├── components/     # UI components (MapArea, RoutePlanner, RouteDetails, FerryInfo, …)
-│       ├── pages/          # Route-level pages (Home, RouteView)
-│       ├── hooks/          # use-map and other custom hooks
+│       ├── pages/          # Route-level pages (Home, RouteView, AuthPage)
+│       ├── hooks/          # use-map, use-auth, and other custom hooks
 │       └── lib/            # Query client, utilities
 ├── server/
 │   ├── index.ts            # Express app entry point
-│   ├── routes.ts           # API route definitions
+│   ├── auth.ts             # Passport setup, password hashing, session config
+│   ├── routes.ts           # API route definitions (includes /api/auth/*)
 │   ├── storage.ts          # DB access layer
 │   └── services/
 │       ├── geocoding.ts    # Nominatim geocoding
@@ -146,6 +150,17 @@ EuropeanRiderGuide/
 Once the dev server is running:
 
 ```
-GET http://localhost:5000/api/routes/saved
-GET http://localhost:5000/api/routes/search?q=alpine
+GET  http://localhost:5000/api/routes/saved
+GET  http://localhost:5000/api/routes/search?q=alpine
 ```
+
+### Auth endpoints
+
+```
+POST http://localhost:5000/api/auth/register   { "username": "...", "password": "..." }
+POST http://localhost:5000/api/auth/login      { "username": "...", "password": "..." }
+POST http://localhost:5000/api/auth/logout
+GET  http://localhost:5000/api/auth/me
+```
+
+Passwords are hashed with `crypto.scrypt` (salted). Sessions are stored in the `session` Postgres table (created automatically on first run).

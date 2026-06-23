@@ -16,7 +16,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-[#0d1626] to-slate-950 transition-opacity duration-500"
+      className="splash-screen fixed inset-0 z-[9999] flex flex-col items-center justify-center transition-opacity duration-500"
       style={{ opacity: fading ? 0 : 1, pointerEvents: fading ? "none" : "auto" }}
     >
       {/* Subtle vignette ring */}

@@ -1,5 +1,57 @@
 # TODO
 
+---
+
+## Tech Stack
+
+### Runtime & Language
+- **TypeScript 5.6** — end-to-end (client + server + shared schema)
+- **Node.js** — server runtime (`tsx` for dev, `esbuild` for prod build)
+
+### Frontend
+- **React 18** — UI framework
+- **Vite 5** — bundler / dev server
+- **Wouter** — client-side routing (lightweight React Router alternative)
+- **TailwindCSS 3** + `tailwindcss-animate` + `@tailwindcss/typography` — styling
+- **shadcn/ui** (Radix UI primitives + CVA) — component library
+- **Framer Motion** — animations
+- **Lucide React** + **React Icons** — icon sets
+- **TanStack React Query v5** — server state / data fetching
+- **React Hook Form** + **Zod** — form handling and validation
+- **Leaflet 1.9** + `leaflet-routing-machine` + `@mapbox/polyline` — interactive map
+- **Recharts** — charts / data visualisation
+- **date-fns** — date utilities
+
+### Backend
+- **Express 4** — HTTP server
+- **express-session** + **connect-pg-simple** — session management (Postgres-backed)
+- **Passport** + `passport-local` — authentication
+- **serverless-http** — Netlify Functions adapter
+- **ws** — WebSocket support
+
+### Database & ORM
+- **PostgreSQL** (Neon serverless) — primary database
+- **Drizzle ORM** — type-safe ORM + migrations
+- **drizzle-kit** — schema push / migration tooling
+- **drizzle-zod** + **drizzle-seed** — schema validation helpers and seed utilities
+
+### External APIs
+- **OpenRouteService** — dynamic route calculation (driving-car profile, avoid highways)
+- **Nominatim (OpenStreetMap)** — geocoding & reverse geocoding
+- **Overpass API** — Points of Interest (restaurants, fuel, hotels, motorcycle POIs)
+
+### Infrastructure & Deployment
+- **Netlify** — hosting + serverless functions (`netlify-cli`)
+- **dotenv** — local environment variable loading
+
+### Dev Tooling
+- **tsx** — TypeScript execution for dev server & scripts
+- **esbuild** — production server bundling
+- **drizzle-kit push** — schema sync to DB
+- **TypeScript strict mode** — full type checking (`tsc`)
+
+---
+
 ## Overpass API / POI Service Improvements
 
 Upgrade `server/services/poi.ts` to fetch more motorcycle-specific POIs from OpenStreetMap.

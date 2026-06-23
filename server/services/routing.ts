@@ -34,6 +34,7 @@ interface RouteSegment {
   startCoords: Coordinates;
   endCoords: Coordinates;
   waypoints: Coordinates[];
+  geometry: Coordinates[];
   distance: number; // in km
   duration: number; // in minutes
 }
@@ -58,6 +59,7 @@ export class RoutingService {
     preferences?: {
       avoidHighways?: boolean;
       scenicRoutes?: boolean;
+      includeFerries?: boolean;
     }
   ): Promise<{
     distance: number; // in km
@@ -80,10 +82,17 @@ export class RoutingService {
       instructions: true,
     };
 
-    // Add options to avoid highways if requested
+    const avoidFeatures: string[] = [];
     if (preferences?.avoidHighways) {
+      avoidFeatures.push("highways");
+    }
+    if (preferences?.includeFerries === false) {
+      avoidFeatures.push("ferries");
+    }
+
+    if (avoidFeatures.length > 0) {
       requestBody.options = {
-        avoid_features: ["highways"],
+        avoid_features: avoidFeatures,
       };
     }
 
@@ -152,8 +161,9 @@ export class RoutingService {
         if (step.name && step.name.trim() && step.name !== '-') {
           roadNameSet.add(step.name);
         }
-        const isFerry = (step as any).type === 11 ||
-          step.instruction.toLowerCase().includes('ferry');
+        const stepName = step.name.toLowerCase();
+        const instruction = step.instruction.toLowerCase();
+        const isFerry = stepName.includes('ferry') || instruction.includes('ferry');
         if (isFerry) {
           const startIdx = step.way_points[0];
           const endIdx = step.way_points[step.way_points.length - 1];
@@ -195,6 +205,7 @@ export class RoutingService {
           startCoords: geometry[0],
           endCoords: geometry[geometry.length - 1],
           waypoints: geometry.slice(1, -1),
+          geometry,
           distance: totalDistance,
           duration: totalDuration,
         },
@@ -217,6 +228,7 @@ export class RoutingService {
         startCoords: segmentGeometry[0],
         endCoords: segmentGeometry[segmentGeometry.length - 1],
         waypoints: segmentGeometry.slice(1, -1),
+        geometry: segmentGeometry,
         distance: segmentDistance,
         duration: segmentDuration,
       });

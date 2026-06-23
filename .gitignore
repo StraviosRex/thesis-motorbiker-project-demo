@@ -6,8 +6,10 @@ vite.config.ts.*
 *.tar.gz
 *.env
 .local/
-test-*.mjs
+proje.md
+.claude/
 cache/
+.claudeignore
 
 # Local Netlify folder
 .netlify

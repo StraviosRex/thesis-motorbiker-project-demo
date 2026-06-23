@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 export function MapLegend({ className }: { className?: string }) {
   return (
     <div className={cn(
-      "bg-slate-900/85 backdrop-blur-sm rounded-lg shadow-2xl p-3.5 border border-slate-700/50 max-w-xs",
+      "map-legend backdrop-blur-sm rounded-lg shadow-2xl p-3.5 border max-w-xs",
       className
     )}>
       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Legend</div>
