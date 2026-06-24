@@ -73,6 +73,17 @@ This application solves that by:
 
 ---
 
+### Known Issues & Challenges
+
+| Issue | Description |
+|---|---|
+| Dynamic route map rendering | When a user enters two custom locations that are not in the curated database, the route is calculated via OpenRouteService but the polyline does not always draw correctly on the map simultaneously — the route details may appear in the panel while the map fails to render the path |
+| Custom route reliability | Dynamic route calculation depends entirely on OpenRouteService's availability and the quality of its geocoding. Ambiguous city names, small towns, or locations near borders can return incorrect or no results |
+| Curated route coverage | Only a limited set of iconic European routes are in the database. Any origin/destination pair outside that set falls back to dynamic calculation, which is less reliable |
+| Session persistence on Netlify | Netlify's serverless functions are stateless between invocations; sessions survive because they are stored in Postgres, but cold starts can occasionally cause a brief delay on the first authenticated request |
+
+---
+
 ## Features
 
 - **Dynamic route calculation** between any two European cities via OpenRouteService
